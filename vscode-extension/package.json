@@ -1,0 +1,118 @@
+{
+  "name": "browser-copilot-agent",
+  "displayName": "Browser Copilot Agent",
+  "description": "Connect GitHub Copilot to your browser for automated testing and control",
+  "version": "1.0.0",
+  "publisher": "browser_copilot_integration",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jaypal1046/browser_copilot_integration.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jaypal1046/browser_copilot_integration/issues"
+  },
+  "homepage": "https://github.com/jaypal1046/browser_copilot_integration#readme",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Testing",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "browserAgent.connect",
+        "title": "Browser Agent: Connect to Browser"
+      },
+      {
+        "command": "browserAgent.launchBrowser",
+        "title": "Browser Agent: Launch Isolated Browser"
+      },
+      {
+        "command": "browserAgent.disconnect",
+        "title": "Browser Agent: Disconnect"
+      },
+      {
+        "command": "browserAgent.runTests",
+        "title": "Browser Agent: Run Integration Tests"
+      },
+      {
+        "command": "browserAgent.click",
+        "title": "Browser Agent: Click Element"
+      },
+      {
+        "command": "browserAgent.type",
+        "title": "Browser Agent: Type Text"
+      },
+      {
+        "command": "browserAgent.navigate",
+        "title": "Browser Agent: Navigate to URL"
+      },
+      {
+        "command": "browserAgent.getConsole",
+        "title": "Browser Agent: Get Console Logs"
+      },
+      {
+        "command": "browserAgent.getDOM",
+        "title": "Browser Agent: Get DOM Structure"
+      },
+      {
+        "command": "browserAgent.screenshot",
+        "title": "Browser Agent: Take Screenshot"
+      },
+      {
+        "command": "browserAgent.executeJS",
+        "title": "Browser Agent: Execute JavaScript"
+      },
+      {
+        "command": "browserAgent.getPerformance",
+        "title": "Browser Agent: Get Performance Metrics"
+      }
+    ],
+    "configuration": {
+      "title": "Browser Copilot Agent",
+      "properties": {
+        "browserAgent.relayServerUrl": {
+          "type": "string",
+          "default": "ws://localhost:8080",
+          "description": "WebSocket URL of the relay server"
+        },
+        "browserAgent.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically connect to relay server on startup"
+        },
+        "browserAgent.commandTimeout": {
+          "type": "number",
+          "default": 10000,
+          "description": "Command execution timeout in milliseconds"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "lint": "eslint .",
+    "test": "node ./test/runTest.js"
+  },
+  "dependencies": {
+    "uuid": "^9.0.1",
+    "ws": "^8.19.0",
+    "puppeteer-core": "^24.37.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.x",
+    "@types/vscode": "^1.80.0",
+    "eslint": "^8.41.0",
+    "webpack": "^5.85.0",
+    "webpack-cli": "^5.1.1"
+  }
+}

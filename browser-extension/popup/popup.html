@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Browser Copilot Agent</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>🤖 Browser Copilot Agent</h1>
+
+        <div class="status">
+            <div class="status-indicator" id="status-indicator">●</div>
+            <span id="status-text">Disconnected</span>
+        </div>
+
+        <div class="info">
+            <p><strong>Client ID:</strong> <span id="client-id">-</span></p>
+        </div>
+
+        <div class="actions">
+            <button id="connect-btn">Connect</button>
+            <button id="disconnect-btn" disabled>Disconnect</button>
+        </div>
+
+        <div class="logs">
+            <h3>Activity Log</h3>
+            <div id="log-container"></div>
+        </div>
+
+        <div class="footer">
+            <small>Relay Server: ws://localhost:8080</small>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,10 @@
+{
+  "port": 8080,
+  "host": "localhost",
+  "maxConnections": 10,
+  "heartbeatInterval": 30000,
+  "messageTimeout": 10000,
+  "logLevel": "info",
+  "enableCORS": false,
+  "ssl": false
+}

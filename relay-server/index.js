@@ -1,716 +1,571 @@
+// Relay Server for Browser Copilot Agent - Enhanced v2.0
+// Routes commands between VS Code extension and browser extension
+
 const WebSocket = require("ws");
-const { v4: uuidv4 } = require("uuid");
+const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const http = require("http");
-const { PlatformLauncher } = require("./launcher");
-const url = require("url");
+const crypto = require("crypto");
 
-// Load configuration
-let config = {
-  port: 8080,
-  host: "localhost",
-  logLevel: "info",
-  maxRequestsPerMinute: 100,
+// ============================================
+// Configuration
+// ============================================
+
+const CONFIG = {
+  port: parseInt(process.env.PORT || "8080"),
+  host: process.env.HOST || "0.0.0.0",
+  maxPayloadSize: 10 * 1024 * 1024, // 10MB
   heartbeatInterval: 30000,
-  messageTimeout: 60000
+  rateLimit: {
+    windowMs: 60000,
+    maxRequests: 200,
+  },
+  auth: {
+    enabled: process.env.AUTH_ENABLED === "true",
+    apiKey: process.env.API_KEY || "",
+  },
 };
 
-try {
-  const configPath = path.join(__dirname, "config.json");
-  if (fs.existsSync(configPath)) {
-    const fileConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    config = { ...config, ...fileConfig };
-  }
-} catch (e) {
-  // Ignore missing config, use defaults
-}
-
-// Message validator
-class MessageValidator {
-  static validate(message) {
-    if (typeof message !== 'object' || message === null) {
-      throw new Error('Message must be an object');
-    }
-
-    if (!message.type || typeof message.type !== 'string') {
-      throw new Error('Message must have a string type field');
-    }
-
-    // Validate message size
-    const size = JSON.stringify(message).length;
-    if (size > 10 * 1024 * 1024) { // 10MB
-      throw new Error('Message exceeds maximum size');
-    }
-
-    // Validate specific message types
-    switch (message.type) {
-      case 'register':
-        if (!message.clientType || !['vscode', 'browser'].includes(message.clientType)) {
-          throw new Error('Invalid clientType in register message');
-        }
-        break;
-      case 'command':
-        if (!message.command || typeof message.command !== 'string') {
-          throw new Error('Command message must have a command field');
-        }
-        break;
-      case 'response':
-        if (!message.id) {
-          throw new Error('Response message must have an id field');
-        }
-        break;
-    }
-
-    return true;
+// Load config file if exists
+const configPath = path.join(__dirname, "config.json");
+if (fs.existsSync(configPath)) {
+  try {
+    const fileConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    Object.assign(CONFIG, fileConfig);
+  } catch (e) {
+    console.warn("Warning: Could not parse config.json:", e.message);
   }
 }
 
-// Rate limiter for preventing spam
-class RateLimiter {
-  constructor(maxRequests = 100, timeWindow = 60000) {
-    this.maxRequests = maxRequests;
-    this.timeWindow = timeWindow;
-    this.requests = new Map(); // clientId -> [timestamps]
+// ============================================
+// State
+// ============================================
+
+const clients = new Map(); // clientId -> { ws, type, metadata, registeredAt }
+const commandHistory = []; // { id, command, params, fromClient, toClient, status, timestamp, duration }
+const maxHistorySize = 500;
+const rateLimitMap = new Map(); // clientId -> { count, resetAt }
+
+// Server metrics
+const metrics = {
+  startedAt: Date.now(),
+  totalConnections: 0,
+  totalCommands: 0,
+  totalErrors: 0,
+  commandsByType: {},
+  avgResponseTime: 0,
+  responseTimes: [],
+};
+
+// ============================================
+// HTTP Server
+// ============================================
+
+const server = http.createServer((req, res) => {
+  // CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    res.end();
+    return;
   }
 
-  check(clientId) {
-    const now = Date.now();
-    const clientRequests = this.requests.get(clientId) || [];
+  const url = new URL(req.url, `http://${req.headers.host}`);
 
-    // Remove old timestamps
-    const recentRequests = clientRequests.filter(
-      timestamp => now - timestamp < this.timeWindow
-    );
-
-    if (recentRequests.length >= this.maxRequests) {
-      return false;
-    }
-
-    recentRequests.push(now);
-    this.requests.set(clientId, recentRequests);
-    return true;
+  switch (url.pathname) {
+    case "/":
+      serveDashboard(req, res);
+      break;
+    case "/api/status":
+      serveJSON(res, getServerStatus());
+      break;
+    case "/api/clients":
+      serveJSON(res, getClientList());
+      break;
+    case "/api/metrics":
+      serveJSON(res, getMetrics());
+      break;
+    case "/api/history":
+      serveJSON(res, getCommandHistory(url.searchParams));
+      break;
+    case "/api/health":
+      serveJSON(res, { status: "ok", uptime: Date.now() - metrics.startedAt });
+      break;
+    default:
+      res.writeHead(404);
+      res.end("Not Found");
   }
+});
 
-  reset(clientId) {
-    this.requests.delete(clientId);
+function serveJSON(res, data) {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data, null, 2));
+}
+
+function serveDashboard(req, res) {
+  const dashboardPath = path.join(__dirname, "dashboard.html");
+  if (fs.existsSync(dashboardPath)) {
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end(fs.readFileSync(dashboardPath));
+  } else {
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end("<h1>Browser Copilot Agent - Relay Server</h1><p>Dashboard not found.</p>");
   }
 }
 
-class RelayServer {
-  constructor(config) {
-    this.config = config;
-    this.clients = new Map(); // clientId -> { ws, type, metadata }
-    this.vscodeClients = new Map(); // clientId -> ws
-    this.browserClients = new Map(); // clientId -> ws
-    this.messageQueue = new Map(); // messageId -> { message, timestamp }
-    this.rateLimiter = new RateLimiter(config.maxRequestsPerMinute || 100);
-    this.metrics = {
-      totalMessages: 0,
-      totalErrors: 0,
-      totalConnections: 0,
-      uptime: Date.now(),
-      messagesPerSecond: 0,
-      lastMessageTime: Date.now()
+// ============================================
+// API Helpers
+// ============================================
+
+function getServerStatus() {
+  const vscodeClients = [];
+  const browserClients = [];
+
+  for (const [id, client] of clients) {
+    const info = {
+      id,
+      type: client.type,
+      registeredAt: client.registeredAt,
+      metadata: client.metadata,
     };
-
-    // Create HTTP server first
-    this.server = http.createServer((req, res) => {
-      this.handleHttpRequest(req, res);
-    });
-
-    this.wss = new WebSocket.Server({
-      server: this.server,
-      maxPayload: 10 * 1024 * 1024, // 10MB max message size
-    });
-
-    this.setupServer();
-    this.startHeartbeat();
-    this.startCleanup();
-    this.startMetricsCalculation();
-    this.setupGracefulShutdown();
-
-    // Start HTTP server
-    this.server.listen(config.port, config.host, () => {
-      this.log("info", `Relay server started on ${config.host}:${config.port}`);
-      this.log("info", `WebSocket: ws://${config.host}:${config.port}`);
-      this.log("info", `HTTP API: http://${config.host}:${config.port}`);
-    });
+    if (client.type === "vscode") vscodeClients.push(info);
+    else if (client.type === "browser") browserClients.push(info);
   }
 
-  // HTTP endpoint handler
-  handleHttpRequest(req, res) {
-    const parsedUrl = url.parse(req.url, true);
-    const pathname = parsedUrl.pathname;
+  return {
+    uptime: Date.now() - metrics.startedAt,
+    clients: {
+      vscode: vscodeClients,
+      browser: browserClients,
+      total: clients.size,
+    },
+    metrics: getMetrics(),
+  };
+}
 
-    // CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+function getClientList() {
+  const list = [];
+  for (const [id, client] of clients) {
+    list.push({
+      id,
+      type: client.type,
+      registeredAt: client.registeredAt,
+      uptime: Date.now() - client.registeredAt,
+      metadata: client.metadata,
+    });
+  }
+  return { clients: list };
+}
 
-    if (req.method === 'OPTIONS') {
-      res.writeHead(200);
-      res.end();
-      return;
-    }
+function getMetrics() {
+  return {
+    ...metrics,
+    uptime: Date.now() - metrics.startedAt,
+    activeConnections: clients.size,
+    historySize: commandHistory.length,
+  };
+}
 
-    // Health check endpoint
-    if (pathname === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'healthy',
-        uptime: Math.floor((Date.now() - this.metrics.uptime) / 1000),
-        timestamp: Date.now()
-      }));
-      return;
-    }
+function getCommandHistory(params) {
+  let history = [...commandHistory];
+  const limit = parseInt(params?.get("limit") || "50");
+  const command = params?.get("command");
+  const status = params?.get("status");
 
-    // Status endpoint
-    if (pathname === '/status') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'running',
-        clients: {
-          total: this.clients.size,
-          vscode: this.vscodeClients.size,
-          browser: this.browserClients.size
-        },
-        uptime: Math.floor((Date.now() - this.metrics.uptime) / 1000),
-        timestamp: Date.now()
-      }));
-      return;
-    }
+  if (command) {
+    history = history.filter((h) => h.command === command);
+  }
+  if (status) {
+    history = history.filter((h) => h.status === status);
+  }
 
-    // Metrics endpoint
-    if (pathname === '/metrics') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        ...this.metrics,
-        uptimeSeconds: Math.floor((Date.now() - this.metrics.uptime) / 1000),
-        clients: this.getStats(),
-        memoryUsage: process.memoryUsage()
-      }));
-      return;
-    }
+  return {
+    history: history.slice(-limit),
+    total: commandHistory.length,
+    filtered: history.length,
+  };
+}
 
-    // Dashboard
-    if (pathname === '/') {
-      const dashboardPath = path.join(__dirname, 'dashboard.html');
-      if (fs.existsSync(dashboardPath)) {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        fs.createReadStream(dashboardPath).pipe(res);
+// ============================================
+// WebSocket Server
+// ============================================
+
+const wss = new WebSocket.Server({
+  server,
+  maxPayload: CONFIG.maxPayloadSize,
+  verifyClient: (info, callback) => {
+    // API Key auth check on upgrade
+    if (CONFIG.auth.enabled && CONFIG.auth.apiKey) {
+      const authHeader = info.req.headers["authorization"];
+      const urlKey = new URL(
+        info.req.url,
+        `http://${info.req.headers.host}`
+      ).searchParams.get("apiKey");
+      const key = authHeader?.replace("Bearer ", "") || urlKey;
+
+      if (key !== CONFIG.auth.apiKey) {
+        callback(false, 401, "Unauthorized");
         return;
       }
     }
+    callback(true);
+  },
+});
 
-    // 404
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Not found' }));
-  }
+wss.on("connection", (ws, req) => {
+  const clientId = crypto.randomUUID();
+  metrics.totalConnections++;
 
-  setupServer() {
-    this.wss.on("connection", (ws, req) => {
-      const clientId = uuidv4();
-      const clientIp = req.socket.remoteAddress;
+  console.log(`[${new Date().toISOString()}] Client connected: ${clientId}`);
 
-      this.metrics.totalConnections++;
-      this.log(
-        "info",
-        `New connection from ${clientIp}, assigned ID: ${clientId}`
-      );
-
-      // Initialize client
-      const client = {
-        ws,
-        id: clientId,
-        type: null, // 'vscode' or 'browser'
-        metadata: {},
-        connectedAt: Date.now(),
-        lastPing: Date.now(),
-        isAlive: true,
-      };
-
-      this.clients.set(clientId, client);
-
-      // Send connection acknowledgment
-      this.sendToClient(ws, {
-        type: "connection",
-        clientId,
-        timestamp: Date.now(),
-        message: "Connected to relay server",
-      });
-
-      // Setup message handler
-      ws.on("message", (data) => {
-        this.handleMessage(clientId, data);
-      });
-
-      // Setup pong handler
-      ws.on("pong", () => {
-        if (this.clients.has(clientId)) {
-          this.clients.get(clientId).isAlive = true;
-          this.clients.get(clientId).lastPing = Date.now();
-        }
-      });
-
-      // Setup close handler
-      ws.on("close", () => {
-        this.handleDisconnect(clientId);
-      });
-
-      // Setup error handler
-      ws.on("error", (error) => {
-        this.log(
-          "error",
-          `WebSocket error for client ${clientId}: ${error.message}`
-        );
-      });
-    });
-
-    this.wss.on("error", (error) => {
-      this.log("error", `Server error: ${error.message}`);
-      this.metrics.totalErrors++;
-    });
-  }
-
-  handleMessage(clientId, data) {
-    try {
-      // Rate limiting check
-      if (!this.rateLimiter.check(clientId)) {
-        this.sendError(clientId, "RATE_LIMIT_EXCEEDED", "Too many requests");
-        return;
-      }
-
-      const message = JSON.parse(data.toString());
-
-      // Validate message
-      MessageValidator.validate(message);
-
-      const client = this.clients.get(clientId);
-
-      if (!client) {
-        this.log("warn", `Message from unknown client: ${clientId}`);
-        return;
-      }
-
-      this.metrics.totalMessages++;
-      this.metrics.lastMessageTime = Date.now();
-
-      this.log(
-        "debug",
-        `Message from ${clientId} (${client.type}): ${message.type}`
-      );
-
-      // Validate message structure
-      if (!message.type) {
-        throw new Error("Message must have a type field");
-      }
-
-      // Handle different message types
-      switch (message.type) {
-        case "register":
-          this.handleRegistration(clientId, message);
-          break;
-
-        case "command":
-          this.routeCommand(clientId, message);
-          break;
-
-        case "response":
-          this.routeResponse(clientId, message);
-          break;
-
-        case "event":
-          this.routeEvent(clientId, message);
-          break;
-
-        case "ping":
-          this.handlePing(clientId, message);
-          break;
-
-        default:
-          this.log("warn", `Unknown message type: ${message.type}`);
-      }
-    } catch (error) {
-      this.metrics.totalErrors++;
-      this.log(
-        "error",
-        `Error handling message from ${clientId}: ${error.message}`
-      );
-      this.sendError(clientId, "INVALID_MESSAGE", error.message);
-    }
-  }
-
-  handleRegistration(clientId, message) {
-    const client = this.clients.get(clientId);
-    const clientType = message.clientType; // 'vscode' or 'browser'
-
-    if (!["vscode", "browser"].includes(clientType)) {
-      this.sendError(
-        clientId,
-        "INVALID_CLIENT_TYPE",
-        'Client type must be "vscode" or "browser"'
-      );
-      return;
-    }
-
-    client.type = clientType;
-    client.metadata = message.metadata || {};
-
-    // Store in type-specific maps
-    if (clientType === "vscode") {
-      this.vscodeClients.set(clientId, client.ws);
-    } else {
-      this.browserClients.set(clientId, client.ws);
-    }
-
-    this.log("info", `Client ${clientId} registered as ${clientType}`);
-
-    // Send registration confirmation
-    this.sendToClient(client.ws, {
-      type: "registered",
+  // Send client ID
+  ws.send(
+    JSON.stringify({
+      type: "connection",
       clientId,
-      clientType,
-      timestamp: Date.now(),
-      connectedClients: {
-        vscode: this.vscodeClients.size,
-        browser: this.browserClients.size,
-      },
-    });
+      serverVersion: "2.0.0",
+    })
+  );
 
-    // Notify other clients
-    this.broadcastStatus();
-  }
-
-  routeCommand(fromClientId, message) {
-    // Commands go from VS Code to Browser
-    const fromClient = this.clients.get(fromClientId);
-
-    if (fromClient.type !== "vscode") {
-      this.sendError(
-        fromClientId,
-        "INVALID_SENDER",
-        "Only VS Code can send commands"
-      );
-      return;
-    }
-
-    // Add routing metadata
-    message.from = fromClientId;
-    message.routedAt = Date.now();
-
-    // Store in queue for tracking
-    if (message.id) {
-      this.messageQueue.set(message.id, {
-        message,
-        timestamp: Date.now(),
-        from: fromClientId,
-      });
-    }
-
-    // Route to all browser clients (or specific one if targetId specified)
-    const targetId = message.targetId;
-    let routedCount = 0;
-
-    if (targetId && this.browserClients.has(targetId)) {
-      this.sendToClient(this.browserClients.get(targetId), message);
-      routedCount = 1;
-    } else {
-      // Broadcast to all browser clients
-      this.browserClients.forEach((ws, clientId) => {
-        this.sendToClient(ws, message);
-        routedCount++;
-      });
-    }
-
-    if (routedCount === 0) {
-      this.sendError(
-        fromClientId,
-        "NO_BROWSER_CONNECTED",
-        "No browser clients connected"
+  // Handle messages
+  ws.on("message", (data) => {
+    try {
+      const message = JSON.parse(data.toString());
+      handleMessage(clientId, ws, message);
+    } catch (error) {
+      console.error(`Error parsing message from ${clientId}:`, error.message);
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          error: "Invalid JSON",
+        })
       );
     }
-
-    this.log(
-      "debug",
-      `Routed command ${message.command} to ${routedCount} browser client(s)`
-    );
-  }
-
-  routeResponse(fromClientId, message) {
-    // Responses go from Browser to VS Code
-    const fromClient = this.clients.get(fromClientId);
-
-    if (fromClient.type !== "browser") {
-      this.sendError(
-        fromClientId,
-        "INVALID_SENDER",
-        "Only browser can send responses"
-      );
-      return;
-    }
-
-    // Add routing metadata
-    message.from = fromClientId;
-    message.routedAt = Date.now();
-
-    // Remove from message queue
-    if (message.id) {
-      this.messageQueue.delete(message.id);
-    }
-
-    // Route to all VS Code clients (or specific one if the message has a target)
-    const originalMessage = message.id
-      ? this.messageQueue.get(message.id)
-      : null;
-    const targetId = originalMessage ? originalMessage.from : null;
-
-    let routedCount = 0;
-
-    if (targetId && this.vscodeClients.has(targetId)) {
-      this.sendToClient(this.vscodeClients.get(targetId), message);
-      routedCount = 1;
-    } else {
-      // Broadcast to all VS Code clients
-      this.vscodeClients.forEach((ws) => {
-        this.sendToClient(ws, message);
-        routedCount++;
-      });
-    }
-
-    this.log("debug", `Routed response to ${routedCount} VS Code client(s)`);
-  }
-
-  routeEvent(fromClientId, message) {
-    // Events go from Browser to VS Code
-    const fromClient = this.clients.get(fromClientId);
-
-    if (fromClient.type !== "browser") {
-      return;
-    }
-
-    message.from = fromClientId;
-    message.routedAt = Date.now();
-
-    // Broadcast events to all VS Code clients
-    this.vscodeClients.forEach((ws) => {
-      this.sendToClient(ws, message);
-    });
-  }
-
-  handlePing(clientId, message) {
-    const client = this.clients.get(clientId);
-    client.lastPing = Date.now();
-
-    this.sendToClient(client.ws, {
-      type: "pong",
-      timestamp: Date.now(),
-      originalTimestamp: message.timestamp,
-    });
-  }
-
-  handleDisconnect(clientId) {
-    const client = this.clients.get(clientId);
-
-    if (!client) return;
-
-    this.log("info", `Client ${clientId} (${client.type}) disconnected`);
-
-    // Remove from maps
-    this.clients.delete(clientId);
-
-    if (client.type === "vscode") {
-      this.vscodeClients.delete(clientId);
-    } else if (client.type === "browser") {
-      this.browserClients.delete(clientId);
-    }
-
-    // Notify other clients
-    this.broadcastStatus();
-  }
-
-  startHeartbeat() {
-    setInterval(() => {
-      this.clients.forEach((client, clientId) => {
-        if (!client.isAlive) {
-          this.log("warn", `Client ${clientId} failed heartbeat, terminating`);
-          client.ws.terminate();
-          this.handleDisconnect(clientId);
-          return;
-        }
-
-        client.isAlive = false;
-        client.ws.ping();
-      });
-    }, this.config.heartbeatInterval);
-  }
-
-  startCleanup() {
-    // Clean up old messages from queue
-    setInterval(() => {
-      const now = Date.now();
-      const timeout = this.config.messageTimeout;
-
-      this.messageQueue.forEach((item, messageId) => {
-        if (now - item.timestamp > timeout) {
-          this.log("debug", `Cleaning up timed-out message: ${messageId}`);
-          this.messageQueue.delete(messageId);
-        }
-      });
-    }, 60000); // Every minute
-  }
-
-  setupGracefulShutdown() {
-    const shutdown = () => {
-      console.log("\n🛑 Shutting down relay server gracefully...");
-
-      // Notify all clients
-      this.clients.forEach((client) => {
-        this.sendToClient(client.ws, {
-          type: "server_shutdown",
-          message: "Server is shutting down",
-          timestamp: Date.now()
-        });
-      });
-
-      // Close all connections
-      this.wss.close(() => {
-        console.log("✅ All connections closed");
-        process.exit(0);
-      });
-
-      // Force shutdown after 5 seconds
-      setTimeout(() => {
-        console.log("⚠️  Forcing shutdown");
-        process.exit(1);
-      }, 5000);
-    };
-
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
-  }
-
-  broadcastStatus() {
-    const status = {
-      type: "status",
-      timestamp: Date.now(),
-      clients: {
-        vscode: this.vscodeClients.size,
-        browser: this.browserClients.size,
-        total: this.clients.size,
-      },
-    };
-
-    this.clients.forEach((client) => {
-      this.sendToClient(client.ws, status);
-    });
-  }
-
-  sendToClient(ws, message) {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(message));
-    }
-  }
-
-  sendError(clientId, code, message) {
-    const client = this.clients.get(clientId);
-    if (client) {
-      this.sendToClient(client.ws, {
-        type: "error",
-        error: {
-          code,
-          message,
-          timestamp: Date.now(),
-        },
-      });
-    }
-  }
-
-  log(level, message) {
-    const levels = ["error", "warn", "info", "debug"];
-    const configLevel = levels.indexOf(this.config.logLevel);
-    const messageLevel = levels.indexOf(level);
-
-    if (messageLevel <= configLevel) {
-      const timestamp = new Date().toISOString();
-      console.log(`[${timestamp}] [${level.toUpperCase()}] ${message}`);
-    }
-  }
-
-  getStats() {
-    return {
-      totalClients: this.clients.size,
-      vscodeClients: this.vscodeClients.size,
-      browserClients: this.browserClients.size,
-      queuedMessages: this.messageQueue.size,
-      uptime: process.uptime(),
-    };
-  }
-
-  getMetrics() {
-    return {
-      ...this.metrics,
-      uptimeSeconds: Math.floor((Date.now() - this.metrics.uptime) / 1000),
-      clients: this.getStats()
-    };
-  }
-
-  // Calculate messages per second
-  startMetricsCalculation() {
-    let lastMessageCount = 0;
-
-    setInterval(() => {
-      const currentCount = this.metrics.totalMessages;
-      this.metrics.messagesPerSecond = currentCount - lastMessageCount;
-      lastMessageCount = currentCount;
-    }, 1000);
-  }
-}
-
-// Export Start Function
-function startServer(options = {}) {
-  // Merge options with config
-  const finalConfig = { ...config, ...options };
-
-  const server = new RelayServer(finalConfig);
-
-  if (options.launchBrowser) {
-    console.log('🚀 Auto-launching browser...');
-    setTimeout(async () => {
-      try {
-        const { PlatformLauncher } = require("./launcher");
-        await PlatformLauncher.launch({ platform: options.platform });
-      } catch (error) {
-        console.error('❌ Failed to launch browser:', error.message);
-      }
-    }, 1000);
-  }
-
-  return server;
-}
-
-// Auto-start if run directly
-if (require.main === module) {
-  const isLaunchBrowser = process.argv.includes('--launch-browser');
-  let platform = null;
-  const platformArg = process.argv.find(arg => arg.startsWith('--platform='));
-  if (platformArg) {
-    platform = platformArg.split('=')[1];
-  }
-
-  const server = startServer({
-    launchBrowser: isLaunchBrowser,
-    platform: platform
   });
 
-  // Graceful shutdown
-  process.on("SIGINT", () => {
-    console.log("\nShutting down relay server...");
-    server.wss.close(() => {
-      console.log("Relay server stopped");
+  // Handle disconnect
+  ws.on("close", () => {
+    const client = clients.get(clientId);
+    console.log(
+      `[${new Date().toISOString()}] Client disconnected: ${clientId} (${client?.type || "unknown"})`
+    );
+    clients.delete(clientId);
+    broadcastStatus();
+  });
+
+  // Handle errors
+  ws.on("error", (error) => {
+    console.error(`WebSocket error for ${clientId}:`, error.message);
+    metrics.totalErrors++;
+  });
+});
+
+// ============================================
+// Message Handling
+// ============================================
+
+function handleMessage(clientId, ws, message) {
+  // Rate limiting
+  if (!checkRateLimit(clientId)) {
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        error: "Rate limit exceeded",
+      })
+    );
+    return;
+  }
+
+  switch (message.type) {
+    case "register":
+      handleRegister(clientId, ws, message);
+      break;
+
+    case "command":
+      handleCommand(clientId, message);
+      break;
+
+    case "response":
+      handleResponse(clientId, message);
+      break;
+
+    case "event":
+      handleEvent(clientId, message);
+      break;
+
+    case "ping":
+      ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
+      break;
+
+    default:
+      console.warn(`Unknown message type from ${clientId}: ${message.type}`);
+  }
+}
+
+function handleRegister(clientId, ws, message) {
+  const client = {
+    ws,
+    type: message.clientType,
+    metadata: message.metadata || {},
+    registeredAt: Date.now(),
+  };
+
+  clients.set(clientId, client);
+
+  console.log(
+    `[${new Date().toISOString()}] Registered: ${clientId} as ${message.clientType}`
+  );
+
+  ws.send(
+    JSON.stringify({
+      type: "registered",
+      clientType: message.clientType,
+      clientId,
+    })
+  );
+
+  broadcastStatus();
+}
+
+function handleCommand(fromClientId, message) {
+  const { id, command, params } = message;
+  metrics.totalCommands++;
+  metrics.commandsByType[command] =
+    (metrics.commandsByType[command] || 0) + 1;
+
+  // Record in history
+  const historyEntry = {
+    id,
+    command,
+    params: JSON.stringify(params || {}).substring(0, 500),
+    fromClient: fromClientId,
+    toClient: null,
+    status: "pending",
+    timestamp: Date.now(),
+    duration: null,
+  };
+  commandHistory.push(historyEntry);
+  if (commandHistory.length > maxHistorySize) commandHistory.shift();
+
+  // Find a browser client to route to
+  let targetClient = null;
+  for (const [cid, client] of clients) {
+    if (client.type === "browser" && client.ws.readyState === WebSocket.OPEN) {
+      targetClient = { id: cid, ...client };
+      break;
+    }
+  }
+
+  if (!targetClient) {
+    // No browser client connected
+    const fromClient = clients.get(fromClientId);
+    if (fromClient && fromClient.ws.readyState === WebSocket.OPEN) {
+      fromClient.ws.send(
+        JSON.stringify({
+          type: "response",
+          id,
+          success: false,
+          error: {
+            code: "NO_BROWSER",
+            message:
+              "No browser client connected. Open Chrome with the extension loaded.",
+          },
+        })
+      );
+    }
+    historyEntry.status = "error";
+    historyEntry.duration = Date.now() - historyEntry.timestamp;
+    return;
+  }
+
+  historyEntry.toClient = targetClient.id;
+
+  // Forward command to browser
+  targetClient.ws.send(
+    JSON.stringify({
+      type: "command",
+      id,
+      command,
+      params,
+      fromClient: fromClientId,
+    })
+  );
+
+  console.log(
+    `[${new Date().toISOString()}] Routed: ${command} (${fromClientId} → ${targetClient.id})`
+  );
+}
+
+function handleResponse(fromClientId, message) {
+  const { id, success, data, error } = message;
+
+  // Update history
+  const historyEntry = commandHistory.find((h) => h.id === id);
+  if (historyEntry) {
+    historyEntry.status = success ? "success" : "error";
+    historyEntry.duration = Date.now() - historyEntry.timestamp;
+
+    // Track response times
+    metrics.responseTimes.push(historyEntry.duration);
+    if (metrics.responseTimes.length > 100) metrics.responseTimes.shift();
+    metrics.avgResponseTime = Math.round(
+      metrics.responseTimes.reduce((a, b) => a + b, 0) /
+      metrics.responseTimes.length
+    );
+  }
+
+  // Route response back to VS Code client
+  for (const [cid, client] of clients) {
+    if (client.type === "vscode" && client.ws.readyState === WebSocket.OPEN) {
+      client.ws.send(
+        JSON.stringify({
+          type: "response",
+          id,
+          success,
+          data,
+          error,
+          timestamp: Date.now(),
+        })
+      );
+    }
+  }
+}
+
+function handleEvent(fromClientId, message) {
+  // Forward events from browser to all VS Code clients
+  for (const [cid, client] of clients) {
+    if (client.type === "vscode" && client.ws.readyState === WebSocket.OPEN) {
+      client.ws.send(JSON.stringify(message));
+    }
+  }
+}
+
+// ============================================
+// Rate Limiting
+// ============================================
+
+function checkRateLimit(clientId) {
+  const now = Date.now();
+  let entry = rateLimitMap.get(clientId);
+
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 0, resetAt: now + CONFIG.rateLimit.windowMs };
+    rateLimitMap.set(clientId, entry);
+  }
+
+  entry.count++;
+  return entry.count <= CONFIG.rateLimit.maxRequests;
+}
+
+// ============================================
+// Status Broadcasting
+// ============================================
+
+function broadcastStatus() {
+  const status = {
+    type: "status",
+    clients: {
+      vscode: [...clients.entries()]
+        .filter(([, c]) => c.type === "vscode")
+        .map(([id]) => id),
+      browser: [...clients.entries()]
+        .filter(([, c]) => c.type === "browser")
+        .map(([id]) => id),
+    },
+    timestamp: Date.now(),
+  };
+
+  for (const [, client] of clients) {
+    if (client.ws.readyState === WebSocket.OPEN) {
+      client.ws.send(JSON.stringify(status));
+    }
+  }
+}
+
+// ============================================
+// Heartbeat
+// ============================================
+
+const heartbeatInterval = setInterval(() => {
+  for (const [clientId, client] of clients) {
+    if (client.ws.readyState !== WebSocket.OPEN) {
+      clients.delete(clientId);
+      continue;
+    }
+    client.ws.ping();
+  }
+}, CONFIG.heartbeatInterval);
+
+// ============================================
+// Browser Launcher
+// ============================================
+
+const launchBrowser = process.argv.includes("--launch-browser");
+const platform =
+  process.argv
+    .find((a) => a.startsWith("--platform="))
+    ?.split("=")[1] || "desktop";
+
+if (launchBrowser) {
+  const PlatformLauncher = require("./launcher");
+  const launcher = new PlatformLauncher(platform);
+
+  server.on("listening", async () => {
+    console.log("Launching browser...");
+    try {
+      const browser = await launcher.launch({
+        serverUrl: `ws://localhost:${CONFIG.port}`,
+      });
+      console.log("Browser launched successfully");
+    } catch (error) {
+      console.error("Failed to launch browser:", error.message);
+    }
+  });
+}
+
+// ============================================
+// Graceful Shutdown
+// ============================================
+
+function shutdown() {
+  console.log("\nShutting down relay server...");
+  clearInterval(heartbeatInterval);
+
+  // Close all client connections
+  for (const [, client] of clients) {
+    client.ws.close(1001, "Server shutting down");
+  }
+
+  wss.close(() => {
+    server.close(() => {
+      console.log("Server stopped.");
       process.exit(0);
     });
   });
+
+  // Force exit after 5 seconds
+  setTimeout(() => process.exit(1), 5000);
 }
 
-module.exports = { RelayServer, startServer };
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+
+// ============================================
+// Start Server
+// ============================================
+
+server.listen(CONFIG.port, CONFIG.host, () => {
+  console.log(`
+╔══════════════════════════════════════════════╗
+║   Browser Copilot Agent — Relay Server v2.0  ║
+╠══════════════════════════════════════════════╣
+║  WebSocket: ws://${CONFIG.host}:${CONFIG.port}                 ║
+║  Dashboard: http://localhost:${CONFIG.port}              ║
+║  API:       http://localhost:${CONFIG.port}/api/status    ║
+║  Auth:      ${CONFIG.auth.enabled ? "Enabled ✓" : "Disabled (open)"}                       ║
+╚══════════════════════════════════════════════╝
+  `);
+});

@@ -1,1 +1,15 @@
-data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Crect width='128' height='128' fill='%234A90E2'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-size='64' fill='white'%3E🤖%3C/text%3E%3C/svg%3E
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="26" fill="url(#grad)"/>
+  <g transform="translate(24, 22)" fill="white">
+    <circle cx="40" cy="26" r="8" opacity="0.9"/>
+    <path d="M14 54 C14 38, 66 38, 66 54 L66 66 C66 72, 62 76, 56 76 L24 76 C18 76, 14 72, 14 66 Z" opacity="0.85"/>
+    <circle cx="64" cy="16" r="5" fill="#4ADE80"/>
+    <path d="M22 48 L36 58 L60 38" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
+  </g>
+</svg>

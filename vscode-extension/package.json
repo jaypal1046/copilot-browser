@@ -1,23 +1,24 @@
 {
-  "name": "copilot-browser-vscode",
-  "displayName": "copilot-browser-vscode",
-  "description": "Connect GitHub Copilot to your browser for automated testing and control",
-  "version": "1.0.0",
-  "publisher": "jaypal-browser-copilot",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/jaypal1046/copilot-browser.git"
-  },
-  "bugs": {
-    "url": "https://github.com/jaypal1046/copilot-browser/issues"
-  },
-  "homepage": "https://github.com/jaypal1046/copilot-browser#readme",
+  "name": "browser-copilot-agent",
+  "displayName": "Browser Copilot Agent",
+  "description": "Connect your browser to VS Code & AI Copilot for automated browser control, testing, and intelligent web automation",
+  "version": "2.0.0",
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
     "Testing",
-    "Other"
+    "Other",
+    "Debuggers"
+  ],
+  "keywords": [
+    "browser",
+    "automation",
+    "copilot",
+    "testing",
+    "web",
+    "selenium",
+    "puppeteer"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -27,51 +28,163 @@
     "commands": [
       {
         "command": "browserAgent.connect",
-        "title": "Browser Agent: Connect to Browser"
-      },
-      {
-        "command": "browserAgent.launchBrowser",
-        "title": "Browser Agent: Launch Isolated Browser"
+        "title": "Browser Agent: Connect to Relay Server",
+        "category": "Browser Agent"
       },
       {
         "command": "browserAgent.disconnect",
-        "title": "Browser Agent: Disconnect"
+        "title": "Browser Agent: Disconnect",
+        "category": "Browser Agent"
       },
       {
-        "command": "browserAgent.runTests",
-        "title": "Browser Agent: Run Integration Tests"
-      },
-      {
-        "command": "browserAgent.click",
-        "title": "Browser Agent: Click Element"
-      },
-      {
-        "command": "browserAgent.type",
-        "title": "Browser Agent: Type Text"
+        "command": "browserAgent.launchBrowser",
+        "title": "Browser Agent: Launch Isolated Browser",
+        "category": "Browser Agent"
       },
       {
         "command": "browserAgent.navigate",
-        "title": "Browser Agent: Navigate to URL"
+        "title": "Browser Agent: Navigate to URL",
+        "category": "Browser Agent"
+      },
+      {
+        "command": "browserAgent.click",
+        "title": "Browser Agent: Click Element",
+        "category": "Browser Agent"
+      },
+      {
+        "command": "browserAgent.type",
+        "title": "Browser Agent: Type Text",
+        "category": "Browser Agent"
       },
       {
         "command": "browserAgent.getConsole",
-        "title": "Browser Agent: Get Console Logs"
+        "title": "Browser Agent: Get Console Logs",
+        "category": "Browser Agent"
       },
       {
         "command": "browserAgent.getDOM",
-        "title": "Browser Agent: Get DOM Structure"
+        "title": "Browser Agent: Get DOM",
+        "category": "Browser Agent"
       },
       {
         "command": "browserAgent.screenshot",
-        "title": "Browser Agent: Take Screenshot"
+        "title": "Browser Agent: Take Screenshot",
+        "category": "Browser Agent"
       },
       {
         "command": "browserAgent.executeJS",
-        "title": "Browser Agent: Execute JavaScript"
+        "title": "Browser Agent: Execute JavaScript",
+        "category": "Browser Agent"
       },
       {
         "command": "browserAgent.getPerformance",
-        "title": "Browser Agent: Get Performance Metrics"
+        "title": "Browser Agent: Get Performance Metrics",
+        "category": "Browser Agent"
+      },
+      {
+        "command": "browserAgent.listTabs",
+        "title": "Browser Agent: List All Tabs",
+        "category": "Browser Agent – Tabs"
+      },
+      {
+        "command": "browserAgent.openTab",
+        "title": "Browser Agent: Open New Tab",
+        "category": "Browser Agent – Tabs"
+      },
+      {
+        "command": "browserAgent.closeTab",
+        "title": "Browser Agent: Close Tab",
+        "category": "Browser Agent – Tabs"
+      },
+      {
+        "command": "browserAgent.switchTab",
+        "title": "Browser Agent: Switch to Tab",
+        "category": "Browser Agent – Tabs"
+      },
+      {
+        "command": "browserAgent.reloadTab",
+        "title": "Browser Agent: Reload Tab",
+        "category": "Browser Agent – Tabs"
+      },
+      {
+        "command": "browserAgent.findByText",
+        "title": "Browser Agent: Find Element by Text",
+        "category": "Browser Agent – Smart Select"
+      },
+      {
+        "command": "browserAgent.findByRole",
+        "title": "Browser Agent: Find Element by Role",
+        "category": "Browser Agent – Smart Select"
+      },
+      {
+        "command": "browserAgent.findByLabel",
+        "title": "Browser Agent: Find Element by Label",
+        "category": "Browser Agent – Smart Select"
+      },
+      {
+        "command": "browserAgent.waitForSelector",
+        "title": "Browser Agent: Wait for Selector",
+        "category": "Browser Agent – Wait"
+      },
+      {
+        "command": "browserAgent.waitForText",
+        "title": "Browser Agent: Wait for Text",
+        "category": "Browser Agent – Wait"
+      },
+      {
+        "command": "browserAgent.summarizePage",
+        "title": "Browser Agent: Summarize Page",
+        "category": "Browser Agent – AI"
+      },
+      {
+        "command": "browserAgent.getAccessibility",
+        "title": "Browser Agent: Accessibility Audit",
+        "category": "Browser Agent – AI"
+      },
+      {
+        "command": "browserAgent.keyPress",
+        "title": "Browser Agent: Press Key",
+        "category": "Browser Agent – Keyboard"
+      },
+      {
+        "command": "browserAgent.keyCombo",
+        "title": "Browser Agent: Key Combination",
+        "category": "Browser Agent – Keyboard"
+      },
+      {
+        "command": "browserAgent.getNetwork",
+        "title": "Browser Agent: Get Network Logs",
+        "category": "Browser Agent"
+      },
+      {
+        "command": "browserAgent.getStats",
+        "title": "Browser Agent: Get Stats",
+        "category": "Browser Agent"
+      },
+      {
+        "command": "browserAgent.visualSnapshot",
+        "title": "Browser Agent: Take Visual Snapshot",
+        "category": "Browser Agent – AI"
+      },
+      {
+        "command": "browserAgent.startRecording",
+        "title": "Browser Agent: Start Recording",
+        "category": "Browser Agent – Recording"
+      },
+      {
+        "command": "browserAgent.stopRecording",
+        "title": "Browser Agent: Stop Recording",
+        "category": "Browser Agent – Recording"
+      },
+      {
+        "command": "browserAgent.getRecording",
+        "title": "Browser Agent: Get Recording",
+        "category": "Browser Agent – Recording"
+      },
+      {
+        "command": "browserAgent.runTests",
+        "title": "Browser Agent: Run Integration Tests",
+        "category": "Browser Agent"
       }
     ],
     "configuration": {
@@ -84,35 +197,30 @@
         },
         "browserAgent.autoConnect": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Automatically connect to relay server on startup"
         },
         "browserAgent.commandTimeout": {
           "type": "number",
-          "default": 10000,
-          "description": "Command execution timeout in milliseconds"
+          "default": 30000,
+          "description": "Timeout for browser commands (ms)"
         }
       }
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
-    "package": "webpack --mode production --devtool hidden-source-map",
-    "compile": "webpack",
-    "watch": "webpack --watch",
+    "package": "npx -y @vscode/vsce package --no-dependencies",
+    "build": "echo 'No build step required'",
+    "watch": "echo 'No watch step required'",
     "lint": "eslint .",
-    "test": "node ./test/runTest.js"
+    "test": "node test-integration.js"
   },
   "dependencies": {
-    "uuid": "^9.0.1",
-    "ws": "^8.19.0",
-    "puppeteer-core": "^24.37.2"
+    "uuid": "^9.0.0",
+    "ws": "^8.14.2",
+    "puppeteer-core": "^21.5.2"
   },
   "devDependencies": {
-    "@types/node": "^18.x",
-    "@types/vscode": "^1.80.0",
-    "eslint": "^8.41.0",
-    "webpack": "^5.85.0",
-    "webpack-cli": "^5.1.1"
+    "eslint": "^8.50.0"
   }
 }

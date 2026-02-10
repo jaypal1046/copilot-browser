@@ -28,6 +28,25 @@ let monitoringEnabled = false;
 const eventBuffer = [];
 const maxEventBuffer = 500;
 
+// Dialog handling configuration
+let dialogConfig = {
+  autoAccept: true,
+  autoResponse: "",
+  captureDialogs: true,
+};
+
+// Session recording
+let isRecording = false;
+const recordedCommands = [];
+
+// Command stats
+const commandStats = {
+  total: 0,
+  success: 0,
+  failed: 0,
+  byCommand: {},
+};
+
 // Initialize on install
 chrome.runtime.onInstalled.addListener(() => {
   console.log("Browser Copilot Agent installed");
@@ -57,7 +76,7 @@ function keepAlive() {
     // Also send a message to content scripts to keep them alive
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach((tab) => {
-        chrome.tabs.sendMessage(tab.id, { type: "keepalive" }).catch(() => {});
+        chrome.tabs.sendMessage(tab.id, { type: "keepalive" }).catch(() => { });
       });
     });
   }, config.heartbeatInterval);
@@ -91,6 +110,21 @@ function connectToRelay() {
           userAgent: navigator.userAgent,
           platform: navigator.platform,
           timestamp: Date.now(),
+          version: "2.0.0",
+          capabilities: [
+            "navigate", "click", "type", "scroll", "hover", "submit",
+            "get_console", "get_dom", "get_element", "get_screenshot",
+            "get_performance", "get_cookies", "get_storage", "execute_js",
+            "tab_list", "tab_open", "tab_close", "tab_switch", "tab_reload",
+            "findByText", "findByRole", "findByLabel", "findByPlaceholder",
+            "waitForSelector", "waitForText",
+            "summarizePage", "getAccessibility",
+            "keyPress", "keyCombo", "dragAndDrop", "selectOption",
+            "executeInIframe", "highlight", "visual_snapshot",
+            "start_monitoring", "stop_monitoring", "get_events",
+            "start_recording", "stop_recording", "get_recording",
+            "set_dialog_config", "get_network", "get_stats",
+          ],
         },
       });
 
@@ -183,91 +217,187 @@ async function handleMessage(message) {
 // Handle commands from VS Code
 async function handleCommand(message) {
   const { id, command, params } = message;
+  const startTime = Date.now();
+
+  // Track stats
+  commandStats.total++;
+  commandStats.byCommand[command] = (commandStats.byCommand[command] || 0) + 1;
+
+  // Record if recording
+  if (isRecording) {
+    recordedCommands.push({
+      command,
+      params,
+      timestamp: Date.now(),
+    });
+  }
 
   try {
     let result;
 
     switch (command) {
-      // Navigation commands
+      // ============= Navigation =============
       case "navigate":
         result = await executeNavigate(params);
         break;
 
-      // DOM manipulation
+      // ============= DOM Interaction =============
       case "click":
         result = await executeClick(params);
         break;
-
       case "type":
         result = await executeType(params);
         break;
-
       case "scroll":
         result = await executeScroll(params);
         break;
-
       case "hover":
         result = await executeHover(params);
         break;
-
       case "submit":
         result = await executeSubmit(params);
         break;
 
-      // Data retrieval
+      // ============= Data Retrieval =============
       case "get_console":
         result = await getConsole(params);
         break;
-
       case "get_dom":
         result = await getDOM(params);
         break;
-
       case "get_element":
         result = await getElement(params);
         break;
-
       case "get_screenshot":
         result = await getScreenshot(params);
         break;
-
       case "get_performance":
         result = await getPerformance(params);
         break;
-
       case "get_cookies":
         result = await getCookies(params);
         break;
-
       case "get_storage":
         result = await getStorage(params);
         break;
 
-      // JavaScript execution
+      // ============= JavaScript Execution =============
       case "execute_js":
         result = await executeJS(params);
         break;
 
-      // Monitoring
+      // ============= TAB MANAGEMENT (NEW) =============
+      case "tab_list":
+        result = await tabList(params);
+        break;
+      case "tab_open":
+        result = await tabOpen(params);
+        break;
+      case "tab_close":
+        result = await tabClose(params);
+        break;
+      case "tab_switch":
+        result = await tabSwitch(params);
+        break;
+      case "tab_reload":
+        result = await tabReload(params);
+        break;
+
+      // ============= SMART SELECTORS (NEW) =============
+      case "findByText":
+      case "findByRole":
+      case "findByLabel":
+      case "findByPlaceholder":
+        result = await executeInContentScript(command, params);
+        break;
+
+      // ============= WAIT COMMANDS (NEW) =============
+      case "waitForSelector":
+      case "waitForText":
+        result = await executeInContentScript(command, params);
+        break;
+
+      // ============= PAGE INTELLIGENCE (NEW) =============
+      case "summarizePage":
+      case "getAccessibility":
+        result = await executeInContentScript(command, params || {});
+        break;
+
+      // ============= KEYBOARD & MOUSE (NEW) =============
+      case "keyPress":
+      case "keyCombo":
+      case "dragAndDrop":
+        result = await executeInContentScript(command, params);
+        break;
+
+      // ============= SELECT/DROPDOWN (NEW) =============
+      case "selectOption":
+        result = await executeInContentScript(command, params);
+        break;
+
+      // ============= IFRAME (NEW) =============
+      case "executeInIframe":
+        result = await executeInContentScript(command, params);
+        break;
+
+      // ============= ELEMENT HIGHLIGHT (NEW) =============
+      case "highlight":
+        result = await executeInContentScript(command, params);
+        break;
+
+      // ============= VISUAL DIFF (NEW) =============
+      case "visual_snapshot":
+        result = await executeInContentScript(command, params);
+        break;
+
+      // ============= DIALOG CONFIG (NEW) =============
+      case "set_dialog_config":
+        result = setDialogConfig(params);
+        break;
+
+      // ============= NETWORK (NEW) =============
+      case "get_network":
+        result = getNetworkLogs(params);
+        break;
+
+      // ============= MONITORING =============
       case "start_monitoring":
         result = startMonitoring(params);
         break;
-
       case "stop_monitoring":
         result = stopMonitoring(params);
         break;
-
       case "get_events":
         result = getEvents(params);
+        break;
+
+      // ============= SESSION RECORDING (NEW) =============
+      case "start_recording":
+        result = startRecording();
+        break;
+      case "stop_recording":
+        result = stopRecording();
+        break;
+      case "get_recording":
+        result = getRecording();
+        break;
+
+      // ============= STATS (NEW) =============
+      case "get_stats":
+        result = getStats();
         break;
 
       default:
         throw new Error(`Unknown command: ${command}`);
     }
 
+    // Track success
+    commandStats.success++;
+
     // Send success response
     sendResponse(id, true, result);
   } catch (error) {
+    commandStats.failed++;
     console.error(`Error executing command ${command}:`, error);
     sendResponse(id, false, null, {
       code: "EXECUTION_ERROR",
@@ -277,7 +407,219 @@ async function handleCommand(message) {
   }
 }
 
-// Command implementations
+// ============================================
+// Tab Management Commands
+// ============================================
+
+async function tabList(params) {
+  const queryOptions = {};
+  if (params.currentWindow !== false) {
+    queryOptions.currentWindow = true;
+  }
+
+  const tabs = await chrome.tabs.query(queryOptions);
+  return {
+    tabs: tabs.map((tab) => ({
+      id: tab.id,
+      index: tab.index,
+      title: tab.title,
+      url: tab.url,
+      active: tab.active,
+      pinned: tab.pinned,
+      audible: tab.audible,
+      status: tab.status,
+      favIconUrl: tab.favIconUrl,
+      windowId: tab.windowId,
+    })),
+    total: tabs.length,
+    activeTabId: tabs.find((t) => t.active)?.id,
+  };
+}
+
+async function tabOpen(params) {
+  const { url = "about:blank", active = true, pinned = false } = params;
+  const tab = await chrome.tabs.create({ url, active, pinned });
+
+  // Wait for load if URL provided
+  if (url !== "about:blank") {
+    await new Promise((resolve) => {
+      chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+        if (tabId === tab.id && info.status === "complete") {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      });
+    });
+  }
+
+  return {
+    id: tab.id,
+    url: tab.url || url,
+    title: tab.title,
+    index: tab.index,
+  };
+}
+
+async function tabClose(params) {
+  const { tabId, tabIds } = params;
+  const idsToClose = tabIds || [tabId];
+
+  await chrome.tabs.remove(idsToClose);
+
+  return {
+    closed: idsToClose,
+    count: idsToClose.length,
+  };
+}
+
+async function tabSwitch(params) {
+  const { tabId, index } = params;
+
+  let targetTab;
+  if (tabId) {
+    targetTab = await chrome.tabs.update(tabId, { active: true });
+  } else if (index !== undefined) {
+    const tabs = await chrome.tabs.query({ currentWindow: true });
+    const tab = tabs[index];
+    if (!tab) throw new Error(`No tab at index ${index}`);
+    targetTab = await chrome.tabs.update(tab.id, { active: true });
+  } else {
+    throw new Error("Provide tabId or index");
+  }
+
+  return {
+    id: targetTab.id,
+    title: targetTab.title,
+    url: targetTab.url,
+    index: targetTab.index,
+  };
+}
+
+async function tabReload(params) {
+  const { tabId, bypassCache = false } = params;
+
+  const activeTab = tabId
+    ? await chrome.tabs.get(tabId)
+    : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+
+  await chrome.tabs.reload(activeTab.id, { bypassCache });
+
+  // Wait for reload to complete
+  await new Promise((resolve) => {
+    chrome.tabs.onUpdated.addListener(function listener(updatedTabId, info) {
+      if (updatedTabId === activeTab.id && info.status === "complete") {
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    });
+  });
+
+  const updatedTab = await chrome.tabs.get(activeTab.id);
+  return {
+    id: updatedTab.id,
+    title: updatedTab.title,
+    url: updatedTab.url,
+    bypassCache,
+  };
+}
+
+// ============================================
+// Dialog Configuration
+// ============================================
+
+function setDialogConfig(params) {
+  dialogConfig = { ...dialogConfig, ...params };
+  return {
+    success: true,
+    config: dialogConfig,
+  };
+}
+
+// ============================================
+// Network Logs
+// ============================================
+
+function getNetworkLogs(params) {
+  const { limit = 50, filter } = params || {};
+
+  let logs = [...networkBuffer];
+
+  if (filter) {
+    if (filter.url) {
+      logs = logs.filter((l) => l.url.includes(filter.url));
+    }
+    if (filter.method) {
+      logs = logs.filter(
+        (l) => l.method.toUpperCase() === filter.method.toUpperCase()
+      );
+    }
+    if (filter.statusCode) {
+      logs = logs.filter((l) => l.statusCode === filter.statusCode);
+    }
+    if (filter.type) {
+      logs = logs.filter((l) => l.type === filter.type);
+    }
+  }
+
+  return {
+    logs: logs.slice(-limit),
+    total: networkBuffer.length,
+    filtered: logs.length,
+  };
+}
+
+// ============================================
+// Session Recording
+// ============================================
+
+function startRecording() {
+  isRecording = true;
+  recordedCommands.length = 0;
+  return {
+    recording: true,
+    startedAt: Date.now(),
+  };
+}
+
+function stopRecording() {
+  isRecording = false;
+  return {
+    recording: false,
+    commands: recordedCommands.length,
+    stoppedAt: Date.now(),
+  };
+}
+
+function getRecording() {
+  return {
+    recording: isRecording,
+    commands: [...recordedCommands],
+    total: recordedCommands.length,
+  };
+}
+
+// ============================================
+// Stats
+// ============================================
+
+function getStats() {
+  return {
+    ...commandStats,
+    connected: isConnected,
+    clientId,
+    reconnectAttempts,
+    networkBufferSize: networkBuffer.length,
+    consoleBufferSize: consoleBuffer.length,
+    eventBufferSize: eventBuffer.length,
+    recording: isRecording,
+    recordedCommands: recordedCommands.length,
+  };
+}
+
+// ============================================
+// Original command implementations
+// ============================================
+
 async function executeNavigate(params) {
   const { url, tabId } = params;
 
@@ -398,19 +740,131 @@ async function executeJS(params) {
   return executeInContentScript("executeJS", { code }, tabId);
 }
 
-// Execute command in content script
+// Execute command in content script (with auto-retry self-healing)
 async function executeInContentScript(command, params, tabId) {
   const activeTab = tabId
     ? await chrome.tabs.get(tabId)
     : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
 
-  const response = await chrome.tabs.sendMessage(activeTab.id, {
+  if (!activeTab) {
+    throw new Error("No active tab found");
+  }
+
+  // Check if we can access this tab
+  if (activeTab.url && (activeTab.url.startsWith("chrome://") || activeTab.url.startsWith("chrome-extension://"))) {
+    throw new Error(`Cannot execute commands on ${activeTab.url} (restricted URL)`);
+  }
+
+  // Self-healing: commands with selectors get auto-retry with fallback strategies
+  const selectorCommands = ["click", "type", "hover", "submit", "scroll", "getElement", "highlight"];
+  const maxRetries = 3;
+  const retryDelay = 500;
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await chrome.tabs.sendMessage(activeTab.id, {
+        type: "execute",
+        command,
+        params,
+      });
+
+      // Check if response indicates a failure
+      if (response && response.success === false && response.error) {
+        throw new Error(response.error.message || "Command failed");
+      }
+
+      // Attach healing info if we retried
+      if (attempt > 0 && response) {
+        response._healed = true;
+        response._healAttempt = attempt;
+        response._originalSelector = params.selector;
+      }
+
+      return response;
+    } catch (error) {
+      lastError = error;
+
+      // Only retry selector-based commands with "not found" errors
+      const isNotFound = error.message && (
+        error.message.includes("not found") ||
+        error.message.includes("No element") ||
+        error.message.includes("Cannot read")
+      );
+
+      if (!isNotFound || !selectorCommands.includes(command) || !params.selector) {
+        throw error; // Don't retry non-selector errors
+      }
+
+      if (attempt < maxRetries) {
+        console.log(`[Self-Heal] ${command} failed (attempt ${attempt + 1}), trying fallback...`);
+        await new Promise(r => setTimeout(r, retryDelay * (attempt + 1)));
+
+        // Fallback strategy 1: Try with aria-label or text content
+        if (attempt === 0 && params.selector) {
+          // Try finding by text that might match the selector
+          const selectorText = params.selector.replace(/[#.\[\]='"]/g, ' ').trim();
+          if (selectorText) {
+            try {
+              const found = await chrome.tabs.sendMessage(activeTab.id, {
+                type: "execute",
+                command: "findByText",
+                params: { text: selectorText },
+              });
+              if (found && found.success && found.tagName) {
+                // Build a new selector based on the found element
+                if (found.id) {
+                  params = { ...params, selector: `#${found.id}` };
+                  continue;
+                }
+              }
+            } catch (_) { }
+          }
+        }
+
+        // Fallback strategy 2: Try broader selector (remove pseudo-classes, nth-child, etc.)
+        if (attempt === 1 && params.selector) {
+          const simplified = params.selector
+            .replace(/:nth-child\([^)]*\)/g, '')
+            .replace(/:first-child|:last-child/g, '')
+            .replace(/\s*>\s*/g, ' ')
+            .trim();
+          if (simplified !== params.selector) {
+            params = { ...params, selector: simplified };
+            continue;
+          }
+        }
+
+        // Fallback strategy 3: Wait longer for element to appear
+        if (attempt === 2) {
+          try {
+            await chrome.tabs.sendMessage(activeTab.id, {
+              type: "execute",
+              command: "waitForSelector",
+              params: { selector: params.selector, timeout: 3000 },
+            });
+          } catch (_) { }
+        }
+      }
+    }
+  }
+
+  throw lastError || new Error(`Command ${command} failed after ${maxRetries} retries`);
+}
+
+// Direct content script call (no retry, for internal use)
+async function executeInContentScriptDirect(command, params, tabId) {
+  const activeTab = tabId
+    ? await chrome.tabs.get(tabId)
+    : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+
+  if (!activeTab) throw new Error("No active tab found");
+
+  return chrome.tabs.sendMessage(activeTab.id, {
     type: "execute",
     command,
     params,
   });
-
-  return response;
 }
 
 // Monitoring functions
@@ -490,16 +944,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-// Web request monitoring
+// Web request monitoring (Enhanced)
 chrome.webRequest.onCompleted.addListener(
   (details) => {
-    networkBuffer.push({
+    const entry = {
       url: details.url,
       method: details.method,
       statusCode: details.statusCode,
       timestamp: details.timeStamp,
       type: details.type,
-    });
+      tabId: details.tabId,
+      fromCache: details.fromCache,
+      ip: details.ip,
+    };
+
+    networkBuffer.push(entry);
 
     if (networkBuffer.length > maxNetworkBuffer) {
       networkBuffer.shift();
@@ -515,7 +974,34 @@ chrome.webRequest.onCompleted.addListener(
   { urls: ["<all_urls>"] }
 );
 
-// Commands from popup
+// Also capture failed requests
+chrome.webRequest.onErrorOccurred.addListener(
+  (details) => {
+    const entry = {
+      url: details.url,
+      method: details.method,
+      error: details.error,
+      timestamp: details.timeStamp,
+      type: details.type,
+      tabId: details.tabId,
+      statusCode: 0,
+    };
+
+    networkBuffer.push(entry);
+    if (networkBuffer.length > maxNetworkBuffer) {
+      networkBuffer.shift();
+    }
+
+    sendEvent("network_error", {
+      url: details.url,
+      error: details.error,
+      type: details.type,
+    });
+  },
+  { urls: ["<all_urls>"] }
+);
+
+// Commands from popup and options page
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "connect") {
     connectToRelay();
@@ -529,10 +1015,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({
       connected: isConnected,
       clientId: clientId,
+      stats: commandStats,
+      networkCount: networkBuffer.length,
+      consoleCount: consoleBuffer.length,
     });
+  } else if (message.action === "getFullStats") {
+    sendResponse(getStats());
+  } else if (message.action === "settingsUpdated") {
+    // Apply settings from options page
+    const settings = message.settings || {};
+    if (settings.relayUrl) config.relayServerUrl = settings.relayUrl;
+    if (settings.autoReconnect !== undefined) config.autoReconnect = settings.autoReconnect;
+    if (settings.heartbeat) config.heartbeatInterval = settings.heartbeat;
+    if (settings.maxReconnect) maxReconnectAttempts = settings.maxReconnect;
+    console.log("Settings updated:", settings);
+    sendResponse({ success: true });
   }
 
   return true;
 });
 
-console.log("Background service worker initialized");
+console.log("Background service worker initialized — Enhanced v2.0");

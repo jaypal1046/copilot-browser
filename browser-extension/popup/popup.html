@@ -9,29 +9,140 @@
 
 <body>
     <div class="container">
-        <h1>🤖 Browser Copilot Agent</h1>
-
-        <div class="status">
-            <div class="status-indicator" id="status-indicator">●</div>
-            <span id="status-text">Disconnected</span>
+        <!-- Header -->
+        <div class="header">
+            <div class="header-top">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="8" r="4" />
+                            <path d="M6 20c0-4 3-6 6-6s6 2 6 6" />
+                            <circle cx="18" cy="5" r="2" fill="#4ADE80" stroke="#4ADE80" />
+                        </svg>
+                    </div>
+                    <span class="logo-text">Browser Copilot</span>
+                </div>
+                <span class="version">v2.0</span>
+            </div>
         </div>
 
-        <div class="info">
-            <p><strong>Client ID:</strong> <span id="client-id">-</span></p>
+        <!-- Connection Status Card -->
+        <div class="status-card" id="status-card">
+            <div class="status-row">
+                <div class="status-dot-container">
+                    <div class="status-dot" id="status-dot"></div>
+                    <div class="status-dot-pulse" id="status-pulse"></div>
+                </div>
+                <div class="status-info">
+                    <span class="status-label" id="status-text">Disconnected</span>
+                    <span class="status-detail" id="status-detail">Relay server not connected</span>
+                </div>
+            </div>
+            <div class="status-meta">
+                <div class="meta-item">
+                    <span class="meta-label">Client ID</span>
+                    <span class="meta-value mono" id="client-id">—</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Latency</span>
+                    <span class="meta-value" id="latency">—</span>
+                </div>
+            </div>
         </div>
 
-        <div class="actions">
-            <button id="connect-btn">Connect</button>
-            <button id="disconnect-btn" disabled>Disconnect</button>
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="stat-commands">0</div>
+                <div class="stat-label">Commands</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-success">0</div>
+                <div class="stat-label">Success</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-network">0</div>
+                <div class="stat-label">Network</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-console">0</div>
+                <div class="stat-label">Console</div>
+            </div>
         </div>
 
-        <div class="logs">
-            <h3>Activity Log</h3>
-            <div id="log-container"></div>
+        <!-- Quick Actions -->
+        <div class="section">
+            <div class="section-header">Quick Actions</div>
+            <div class="actions-grid">
+                <button class="action-btn" id="btn-screenshot" title="Take Screenshot">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span>Screenshot</span>
+                </button>
+                <button class="action-btn" id="btn-summarize" title="Summarize Page">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                    <span>Summarize</span>
+                </button>
+                <button class="action-btn" id="btn-accessibility" title="Accessibility Audit">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <circle cx="12" cy="8" r="2" />
+                        <path d="M8 14l4-2 4 2" />
+                        <path d="M10 18l2-4 2 4" />
+                    </svg>
+                    <span>A11y Audit</span>
+                </button>
+                <button class="action-btn" id="btn-console" title="View Console">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="4 17 10 11 4 5" />
+                        <line x1="12" y1="19" x2="20" y2="19" />
+                    </svg>
+                    <span>Console</span>
+                </button>
+            </div>
         </div>
 
+        <!-- Connection Buttons -->
+        <div class="connection-actions">
+            <button class="btn-primary" id="connect-btn">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14" />
+                    <path d="M12 5l7 7-7 7" />
+                </svg>
+                Connect
+            </button>
+            <button class="btn-danger" id="disconnect-btn" disabled>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                Disconnect
+            </button>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="section">
+            <div class="section-header">
+                <span>Activity</span>
+                <button class="clear-btn" id="clear-log">Clear</button>
+            </div>
+            <div class="log-container" id="log-container">
+                <div class="log-empty">No activity yet</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
         <div class="footer">
-            <small>Relay Server: ws://localhost:8080</small>
+            <span>Relay: <span class="mono">ws://localhost:8080</span></span>
+            <a href="http://localhost:8080" target="_blank" class="dashboard-link">Dashboard ↗</a>
         </div>
     </div>
 

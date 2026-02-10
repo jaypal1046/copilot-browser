@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Browser Copilot Agent - Settings</title>
+    <style>
+        :root {
+            --bg: #0f0f14;
+            --bg-card: #1a1a24;
+            --border: rgba(255, 255, 255, 0.06);
+            --text: #e4e4ed;
+            --text-sec: #8b8ba0;
+            --text-muted: #5c5c72;
+            --blue: #4A90FF;
+            --purple: #7C3AED;
+            --green: #4ADE80;
+            --gradient: linear-gradient(135deg, #4A90FF, #7C3AED);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 32px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 560px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 24px;
+        }
+
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .field {
+            margin-bottom: 16px;
+        }
+
+        .field:last-child {
+            margin-bottom: 0;
+        }
+
+        .field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        .field .hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 13px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--blue);
+        }
+
+        .toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .toggle-switch {
+            width: 40px;
+            height: 22px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 11px;
+            position: relative;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+
+        .toggle-switch.active {
+            background: var(--blue);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(18px);
+        }
+
+        .btn-save {
+            width: 100%;
+            padding: 12px;
+            background: var(--gradient);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .btn-save:hover {
+            box-shadow: 0 4px 16px rgba(74, 144, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--green);
+            color: #0a0a0f;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>⚙ Browser Copilot Agent Settings</h1>
+
+        <div class="section">
+            <div class="section-title">Connection</div>
+            <div class="field">
+                <label>Relay Server URL</label>
+                <input type="text" id="relay-url" placeholder="ws://localhost:8080">
+                <div class="hint">WebSocket URL of the relay server</div>
+            </div>
+            <div class="field">
+                <label>API Key (optional)</label>
+                <input type="text" id="api-key" placeholder="Leave blank if auth is disabled">
+                <div class="hint">Required if server has authentication enabled</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Behavior</div>
+            <div class="field">
+                <div class="toggle" onclick="toggleSwitch('auto-connect')">
+                    <label>Auto-connect on startup</label>
+                    <div class="toggle-switch" id="auto-connect"></div>
+                </div>
+                <div class="hint">Automatically connect when browser starts</div>
+            </div>
+            <div class="field">
+                <div class="toggle" onclick="toggleSwitch('auto-reconnect')">
+                    <label>Auto-reconnect on disconnect</label>
+                    <div class="toggle-switch active" id="auto-reconnect"></div>
+                </div>
+            </div>
+            <div class="field">
+                <label>Max reconnect attempts</label>
+                <input type="number" id="max-reconnect" value="10" min="1" max="50">
+            </div>
+            <div class="field">
+                <label>Heartbeat interval (ms)</label>
+                <input type="number" id="heartbeat" value="25000" min="5000" max="60000">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Self-Healing</div>
+            <div class="field">
+                <div class="toggle" onclick="toggleSwitch('self-heal')">
+                    <label>Auto-retry failed selectors</label>
+                    <div class="toggle-switch active" id="self-heal"></div>
+                </div>
+                <div class="hint">Automatically try alternative selectors when elements aren't found</div>
+            </div>
+            <div class="field">
+                <label>Max retry attempts</label>
+                <input type="number" id="max-retries" value="3" min="0" max="10">
+            </div>
+        </div>
+
+        <button class="btn-save" id="save-btn">Save Settings</button>
+    </div>
+
+    <div class="toast" id="toast">Settings saved ✓</div>
+
+    <script>
+        function toggleSwitch(id) {
+            const el = document.getElementById(id);
+            el.classList.toggle('active');
+        }
+
+        // Load saved settings
+        chrome.storage.local.get([
+            'relayUrl', 'apiKey', 'autoConnect', 'autoReconnect',
+            'maxReconnect', 'heartbeat', 'selfHeal', 'maxRetries'
+        ], (data) => {
+            if (data.relayUrl) document.getElementById('relay-url').value = data.relayUrl;
+            if (data.apiKey) document.getElementById('api-key').value = data.apiKey;
+            if (data.autoConnect) document.getElementById('auto-connect').classList.add('active');
+            if (data.autoReconnect !== false) document.getElementById('auto-reconnect').classList.add('active');
+            if (data.maxReconnect) document.getElementById('max-reconnect').value = data.maxReconnect;
+            if (data.heartbeat) document.getElementById('heartbeat').value = data.heartbeat;
+            if (data.selfHeal !== false) document.getElementById('self-heal').classList.add('active');
+            if (data.maxRetries) document.getElementById('max-retries').value = data.maxRetries;
+        });
+
+        // Save
+        document.getElementById('save-btn').addEventListener('click', () => {
+            const settings = {
+                relayUrl: document.getElementById('relay-url').value || 'ws://localhost:8080',
+                apiKey: document.getElementById('api-key').value,
+                autoConnect: document.getElementById('auto-connect').classList.contains('active'),
+                autoReconnect: document.getElementById('auto-reconnect').classList.contains('active'),
+                maxReconnect: parseInt(document.getElementById('max-reconnect').value),
+                heartbeat: parseInt(document.getElementById('heartbeat').value),
+                selfHeal: document.getElementById('self-heal').classList.contains('active'),
+                maxRetries: parseInt(document.getElementById('max-retries').value),
+            };
+
+            chrome.storage.local.set(settings, () => {
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+
+                // Notify background script of settings change
+                chrome.runtime.sendMessage({ action: 'settingsUpdated', settings });
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -23,6 +23,7 @@ class PlatformLauncher {
             case 'ios':
                 launcher = new IOSLauncher(options);
                 break;
+            case 'desktop':
             case 'linux':
             case 'darwin':
             case 'win32':

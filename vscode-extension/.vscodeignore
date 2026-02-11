@@ -1,0 +1,8 @@
+.vscode
+node_modules/.cache
+*.vsix
+test-integration.js
+webpack.config.js
+.eslintrc*
+.gitignore
+package-lock.json

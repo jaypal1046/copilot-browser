@@ -11,8 +11,13 @@ const crypto = require("crypto");
 // Configuration
 // ============================================
 
+// Parse command line arguments for port override
+const argsPort = process.argv
+  .find((a) => a.startsWith("--port="))
+  ?.split("=")[1];
+
 const CONFIG = {
-  port: parseInt(process.env.PORT || "8080"),
+  port: parseInt(argsPort || process.env.PORT || "8080"),
   host: process.env.HOST || "0.0.0.0",
   maxPayloadSize: 10 * 1024 * 1024, // 10MB
   heartbeatInterval: 30000,
@@ -510,13 +515,13 @@ const platform =
     ?.split("=")[1] || "desktop";
 
 if (launchBrowser) {
-  const PlatformLauncher = require("./launcher");
-  const launcher = new PlatformLauncher(platform);
+  const { PlatformLauncher } = require("./launcher");
 
   server.on("listening", async () => {
     console.log("Launching browser...");
     try {
-      const browser = await launcher.launch({
+      await PlatformLauncher.launch({
+        platform,
         serverUrl: `ws://localhost:${CONFIG.port}`,
       });
       console.log("Browser launched successfully");

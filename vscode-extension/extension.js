@@ -6,6 +6,8 @@ const WebSocket = require("ws");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 const { spawn } = require("child_process");
+const net = require("net"); // Required for port checking
+const { BrowserAgentViewProvider } = require("./agent-view");
 
 let ws = null;
 let isConnected = false;
@@ -14,6 +16,7 @@ let outputChannel;
 let statusBarItem;
 let pendingCommands = new Map();
 let relayServerProcess = null;
+let agentViewProvider = null;
 
 // Default timeout for commands
 const COMMAND_TIMEOUT = 30000;
@@ -33,6 +36,18 @@ function activate(context) {
   statusBarItem.command = "browserAgent.connect";
   updateStatusBar(false);
   statusBarItem.show();
+
+  // =============== Register Sidebar View ===============
+  agentViewProvider = new BrowserAgentViewProvider(
+    context.extensionUri,
+    () => ({ isConnected })
+  );
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      BrowserAgentViewProvider.viewType,
+      agentViewProvider
+    )
+  );
 
   // =============== Register Commands ===============
 
@@ -332,7 +347,7 @@ function activate(context) {
 }
 
 // Connect to relay server
-async function connectToRelay() {
+async function connectToRelay(overrideUrl) {
   if (isConnected) {
     vscode.window.showInformationMessage("Already connected to relay server");
     return;
@@ -340,7 +355,7 @@ async function connectToRelay() {
 
   const config = vscode.workspace.getConfiguration("browserAgent");
   const relayUrl =
-    config.get("relayServerUrl") || "ws://localhost:8080";
+    overrideUrl || config.get("relayServerUrl") || "ws://localhost:8080";
 
   outputChannel.appendLine(`Connecting to relay server: ${relayUrl}`);
 
@@ -546,55 +561,156 @@ function disconnect() {
 
 // Launch browser with relay server
 async function launchBrowser() {
-  outputChannel.appendLine("Launching relay server and isolated browser...");
-
-  const relayPath = path.join(
-    __dirname,
-    "..",
-    "relay-server",
-    "index.js"
-  );
+  console.log("Browser Copilot: launchBrowser command triggered");
+  outputChannel.show(true);
+  outputChannel.appendLine("------------------------------------------------");
+  outputChannel.appendLine("Browser Copilot Agent: Launching isolated browser...");
+  vscode.window.setStatusBarMessage("Browser Copilot: Launching...", 3000);
 
   try {
+    // Try to find relay-server in multiple locations
+    let relayPath = null;
+    // ---------------------------------------------------------
+    // 1. Resolve Relay Server Path using Node Resolution
+    // ---------------------------------------------------------
+    try {
+      // Try to resolve 'relay-server' as a dependency
+      relayPath = require.resolve('relay-server');
+      outputChannel.appendLine(`✅ Resolved relay-server module at: ${relayPath}`);
+    } catch (e) {
+      outputChannel.appendLine(`Module resolution failed: ${e.message}`);
+    }
+
+    // ---------------------------------------------------------
+    // 2. Fallback File Search
+    // ---------------------------------------------------------
+    if (!relayPath) {
+      const possiblePaths = [
+        path.join(__dirname, "relay-server", "index.js"),           // Local source
+        path.join(__dirname, "node_modules", "relay-server", "index.js"), // Explicit node_modules
+        path.join(__dirname, "..", "relay-server", "index.js")      // Sibling (old dev layout)
+      ];
+
+      outputChannel.appendLine(`Searching for relay server in ${possiblePaths.length} fallback locations...`);
+      const fs = require("fs");
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+          relayPath = p;
+          outputChannel.appendLine(`✅ Found relay server at: ${relayPath}`);
+          break;
+        }
+      }
+    }
+
+    if (!relayPath) {
+      const msg = "Could not find relay-server/index.js. Ensure the extension is installed correctly.";
+      outputChannel.appendLine(`❌ ERROR: ${msg}`);
+      vscode.window.showErrorMessage(`Browser Copilot Agent: ${msg}`);
+      return;
+    }
+
+    const relayCwd = path.dirname(relayPath);
+    console.log(`Relay CWD: ${relayCwd}`);
+
+    // Check node version
+    try {
+      const { execSync } = require("child_process");
+      const nodeVer = execSync("node -v").toString().trim();
+      outputChannel.appendLine(`System Node Version: ${nodeVer}`);
+    } catch (e) {
+      outputChannel.appendLine(`⚠ Warning: Could not detect 'node' in PATH. Launch might fail. Error: ${e.message}`);
+    }
+
+    // Auto-install dependencies if node_modules is missing
+    const nodeModulesPath = path.join(relayCwd, "node_modules");
+    if (!fs.existsSync(nodeModulesPath)) {
+      outputChannel.appendLine("Installing relay server dependencies (npm install)...");
+      try {
+        const { execSync } = require("child_process");
+        execSync("npm install", { cwd: relayCwd, stdio: "pipe" });
+        outputChannel.appendLine("Dependencies installed successfully.");
+      } catch (error) {
+        const msg = `Failed to install dependencies: ${error.message}`;
+        outputChannel.appendLine(`❌ ${msg}`);
+        vscode.window.showErrorMessage(`Browser Copilot Agent: ${msg}`);
+        return;
+      }
+    }
+
+    // Find a free port starting from 11800 to avoid common conflicts
+    let port = 8080;
+    try {
+      port = await findFreePort(11800);
+      outputChannel.appendLine(`Selected free port: ${port}`);
+    } catch (e) {
+      outputChannel.appendLine(`Warning: Failed to find free port, defaulting to 8080. Error: ${e.message}`);
+    }
+
+    outputChannel.appendLine(`Spawning relay server process on port ${port}...`);
+
+    // Explicitly us 'node' command. If this fails, user needs node in PATH.
     relayServerProcess = spawn(
       "node",
-      [relayPath, "--launch-browser", "--platform=desktop"],
+      [relayPath, "--launch-browser", "--platform=desktop", `--port=${port}`],
       {
         env: { ...process.env },
-        cwd: path.join(__dirname, ".."),
+        cwd: relayCwd,
       }
     );
 
+    if (relayServerProcess.pid) {
+      outputChannel.appendLine(`Relay server process started (PID: ${relayServerProcess.pid})`);
+    } else {
+      outputChannel.appendLine(`❌ Failed to spawn relay server process (no PID).`);
+    }
+
     relayServerProcess.stdout.on("data", (data) => {
-      outputChannel.appendLine(`[Relay] ${data.toString().trim()}`);
+      const msg = data.toString().trim();
+      outputChannel.appendLine(`[Relay] ${msg}`);
+      if (agentViewProvider) agentViewProvider.addLog(msg);
     });
 
     relayServerProcess.stderr.on("data", (data) => {
-      outputChannel.appendLine(`[Relay Error] ${data.toString().trim()}`);
+      const msg = data.toString().trim();
+      outputChannel.appendLine(`[Relay Error] ${msg}`);
+      if (agentViewProvider) agentViewProvider.addLog(`⚠ ${msg}`);
+    });
+
+    relayServerProcess.on("error", (err) => {
+      const msg = `Process error: ${err.message}`;
+      outputChannel.appendLine(`❌ ${msg}`);
+      vscode.window.showErrorMessage(`Browser Copilot Agent: Relay Process Error: ${err.message}`);
     });
 
     relayServerProcess.on("close", (code) => {
       outputChannel.appendLine(`Relay server exited with code ${code}`);
       relayServerProcess = null;
+      if (code !== 0 && code !== null) {
+        vscode.window.showErrorMessage(`Browser Copilot Agent: Relay server exited unexpectedly with code ${code}`);
+      }
     });
 
     // Wait for server to start, then connect
     outputChannel.appendLine("Waiting for relay server to start...");
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    await connectToRelay();
+
+    outputChannel.appendLine(`Attempting to connect to WebSocket at ws://localhost:${port}...`);
+    await connectToRelay(`ws://localhost:${port}`);
 
     vscode.window.showInformationMessage(
       "Browser Copilot Agent: Browser launched and connected!"
     );
   } catch (error) {
-    outputChannel.appendLine(`Launch error: ${error.message}`);
+    console.error("Launch fatal error:", error);
+    outputChannel.appendLine(`❌ Fatal Launch Error: ${error.message}`);
+    outputChannel.appendLine(error.stack);
     vscode.window.showErrorMessage(
-      `Browser Copilot Agent: Failed to launch browser: ${error.message}`
+      `Browser Copilot Agent: Fatal Error: ${error.message}`
     );
   }
 }
 
-// Update status bar
+// Update status bar and sidebar view
 function updateStatusBar(connected) {
   if (connected) {
     statusBarItem.text = "$(globe) Browser Agent: Connected";
@@ -608,6 +724,10 @@ function updateStatusBar(connected) {
       "statusBarItem.warningBackground"
     );
     statusBarItem.command = "browserAgent.connect";
+  }
+  // Sync sidebar view
+  if (agentViewProvider) {
+    agentViewProvider.updateConnectionStatus(connected);
   }
 }
 
@@ -637,3 +757,23 @@ module.exports = {
     disconnect,
   }),
 };
+
+// Helper to find a free port
+function findFreePort(startPort) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(startPort, () => {
+      server.close(() => {
+        resolve(startPort);
+      });
+    });
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        // Port taken, try next one
+        resolve(findFreePort(startPort + 1));
+      } else {
+        reject(err);
+      }
+    });
+  });
+}

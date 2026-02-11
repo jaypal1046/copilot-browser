@@ -2,7 +2,15 @@
   "name": "browser-copilot-agent",
   "displayName": "Browser Copilot Agent",
   "description": "Connect your browser to VS Code & AI Copilot for automated browser control, testing, and intelligent web automation",
-  "version": "2.0.0",
+  "version": "2.1.4",
+  "publisher": "jaypal1046",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jaypal1046/copilot-browser"
+  },
+  "homepage": "https://github.com/jaypal1046/copilot-browser#readme",
+  "icon": "image.jpg",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -206,19 +214,39 @@
           "description": "Timeout for browser commands (ms)"
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "browserAgent",
+          "title": "Browser Agent",
+          "icon": "resources/browser-agent.svg"
+        }
+      ]
+    },
+    "views": {
+      "browserAgent": [
+        {
+          "type": "webview",
+          "id": "browserAgentView",
+          "name": "Browser Agent",
+          "icon": "resources/browser-agent.svg"
+        }
+      ]
     }
   },
   "scripts": {
-    "package": "npx -y @vscode/vsce package --no-dependencies",
+    "package": "npx -y @vscode/vsce package",
     "build": "echo 'No build step required'",
     "watch": "echo 'No watch step required'",
     "lint": "eslint .",
     "test": "node test-integration.js"
   },
   "dependencies": {
+    "puppeteer-core": "^21.5.2",
+    "relay-server": "file:relay-server-1.0.0.tgz",
     "uuid": "^9.0.0",
-    "ws": "^8.14.2",
-    "puppeteer-core": "^21.5.2"
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "eslint": "^8.50.0"

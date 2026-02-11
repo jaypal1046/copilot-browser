@@ -10,10 +10,42 @@ let reconnectInterval = 5000;
 let keepAliveInterval = null;
 
 const config = {
-  relayServerUrl: "ws://localhost:8080",
+  relayServerUrl: "ws://localhost:8080", // Default
   autoReconnect: true,
-  heartbeatInterval: 25000, // Send ping every 25s to keep service worker alive
+  heartbeatInterval: 25000,
+  maxReconnectAttempts: 10,
+  selfHeal: true,
+  maxRetries: 3
 };
+
+
+
+// Listen for settings updates
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "settingsUpdated") {
+    console.log("Settings updated:", message.settings);
+    const { settings } = message;
+
+    // Update config
+    if (settings.relayUrl) config.relayServerUrl = settings.relayUrl;
+    if (settings.autoReconnect !== undefined) config.autoReconnect = settings.autoReconnect;
+    if (settings.heartbeat) config.heartbeatInterval = settings.heartbeat;
+    if (settings.maxReconnect) config.maxReconnectAttempts = settings.maxReconnect;
+    if (settings.selfHeal !== undefined) config.selfHeal = settings.selfHeal;
+    if (settings.maxRetries !== undefined) config.maxRetries = settings.maxRetries;
+
+    // Reconnect with new settings
+    if (ws) {
+      ws.close(); // Will trigger auto-reconnect or we force it?
+      // Force immediate reconnect if auto-connect is true
+      if (config.autoReconnect) {
+        setTimeout(connectToRelay, 1000);
+      }
+    } else {
+      connectToRelay();
+    }
+  }
+});
 
 // Console log interceptor storage
 const consoleBuffer = [];
@@ -47,16 +79,34 @@ const commandStats = {
   byCommand: {},
 };
 
+// Initialize function
+function initializeAndConnect() {
+  chrome.storage.local.get([
+    "relayUrl", "autoReconnect", "heartbeat",
+    "maxReconnect", "selfHeal", "maxRetries"
+  ], (result) => {
+    if (result.relayUrl) config.relayServerUrl = result.relayUrl;
+    if (result.autoReconnect !== undefined) config.autoReconnect = result.autoReconnect;
+    if (result.heartbeat) config.heartbeatInterval = result.heartbeat;
+    if (result.maxReconnect) config.maxReconnectAttempts = result.maxReconnect;
+    if (result.selfHeal !== undefined) config.selfHeal = result.selfHeal;
+    if (result.maxRetries !== undefined) config.maxRetries = result.maxRetries;
+
+    console.log("Configuration loaded:", config);
+    connectToRelay();
+  });
+}
+
 // Initialize on install
 chrome.runtime.onInstalled.addListener(() => {
   console.log("Browser Copilot Agent installed");
-  connectToRelay();
+  initializeAndConnect();
 });
 
 // Connect on startup
 chrome.runtime.onStartup.addListener(() => {
   console.log("Browser Copilot Agent started");
-  connectToRelay();
+  initializeAndConnect();
 });
 
 // Keep service worker alive

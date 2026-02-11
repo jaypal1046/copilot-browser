@@ -1,4 +1,4 @@
-# 🧪 Testing Guide for Browser-Copilot Integration
+# 🧪 Testing Guide for Copilot Browser
 
 ## Quick Test Checklist
 
@@ -71,7 +71,7 @@ In the VS Code Extension Development Host window:
 **Expected Output in Output Panel:**
 
 ```
-🧪 Starting Browser Copilot Integration Tests...
+🧪 Starting Copilot Browser Integration Tests...
 
 Test 1: Navigation
 ✓ Navigation successful

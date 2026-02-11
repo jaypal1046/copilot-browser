@@ -10,7 +10,7 @@ You will need these details to fill out the form at [marketplace.visualstudio.co
 | **ID** | `jaypal-browser-copilot` | **Must match `package.json`!** |
 | **Domain** | *(Leave empty)* | unless you own a domain |
 | **Description** | `Connect GitHub Copilot to your browser for automated testing and control` | |
-| **Source code**| `https://github.com/jaypal1046/copilot-browser` | |
+| **Source code**| `https://github.com/jaypal1046/Copilot Browser` | |
 
 ---
 
@@ -56,6 +56,6 @@ npx vsce publish
 ### ⚠️ I have already updated your `package.json`!
 
 I set your publisher ID to: `"jaypal-browser-copilot"`
-And your repository to: `"https://github.com/jaypal1046/copilot-browser.git"`
+And your repository to: `"https://github.com/jaypal1046/Copilot Browser.git"`
 
 **If you change the ID on the website, let me know so I can update the code.**

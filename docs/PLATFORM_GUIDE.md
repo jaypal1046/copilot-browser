@@ -1,10 +1,10 @@
-# 📱 Browser Copilot - Mobile & Cross-Platform Guide
+# 📱 Copilot Browser - Mobile & Cross-Platform Guide
 
-This guide explains how to use Browser Copilot with isolated browser instances on **Desktop (Windows/Linux/Mac)**, **Android**, and **iOS**.
+This guide explains how to use Copilot Browser with isolated browser instances on **Desktop (Windows/Linux/Mac)**, **Android**, and **iOS**.
 
 ## 📦 VS Code Extension (One-Click)
 
-The easiest way to use Browser Copilot is via the VS Code Extension.
+The easiest way to use Copilot Browser is via the VS Code Extension.
 
 1.  Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
 2.  Run **"Browser Agent: Launch Isolated Browser"**.

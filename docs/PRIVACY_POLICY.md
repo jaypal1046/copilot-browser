@@ -1,9 +1,9 @@
-# Privacy Policy for Browser Copilot Agent
+# Privacy Policy for Copilot Browser (and its VS Code extension Copilot Browser-vscode)
 
 **Last Updated: February 10, 2026**
 
 ## Introduction
-The Browser Copilot Agent ("Extension") is a developer tool designed to connect your browser to GitHub Copilot for automated testing and control. This Privacy Policy explains how we handle your data.
+The Copilot Browser (and its VS Code extension Copilot Browser-vscode) ("Extension") is a developer tool designed to connect your browser to GitHub Copilot for automated testing and control. This Privacy Policy explains how we handle your data.
 
 ## Data Collection and Usage
 The Extension is designed with a "Local-First" architecture. 
@@ -22,4 +22,4 @@ The Extension is designed with a "Local-First" architecture.
 We may update our Privacy Policy from time to time. Thus, you are advised to review this page periodically for any changes.
 
 ## Contact Us
-If you have any questions or suggestions about our Privacy Policy, do not hesitate to open an issue on our [GitHub Repository](https://github.com/jaypal1046/copilot-browser).
+If you have any questions or suggestions about our Privacy Policy, do not hesitate to open an issue on our [GitHub Repository](https://github.com/jaypal1046/Copilot Browser).

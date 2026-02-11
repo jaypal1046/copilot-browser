@@ -1,4 +1,4 @@
-# Browser Copilot Agent — Command Reference & Copilot Guide
+# Copilot Browser / Copilot Browser-vscode — Command Reference & Copilot Guide
 
 ## Quick Start
 

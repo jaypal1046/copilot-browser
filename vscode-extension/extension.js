@@ -1,4 +1,4 @@
-// VS Code Extension for Browser Copilot Agent
+// VS Code Extension for Copilot Browser
 // Manages connection to relay server and exposes commands for Copilot
 
 const vscode = require("vscode");
@@ -22,11 +22,11 @@ let agentViewProvider = null;
 const COMMAND_TIMEOUT = 30000;
 
 function activate(context) {
-  console.log("Browser Copilot Agent activating...");
+  console.log("Copilot Browser activating...");
 
   // Create output channel
-  outputChannel = vscode.window.createOutputChannel("Browser Copilot Agent");
-  outputChannel.appendLine("Browser Copilot Agent Extension activated");
+  outputChannel = vscode.window.createOutputChannel("Copilot Browser");
+  outputChannel.appendLine("Copilot Browser Extension activated");
 
   // Create status bar item
   statusBarItem = vscode.window.createStatusBarItem(
@@ -343,7 +343,7 @@ function activate(context) {
     setTimeout(connectToRelay, 1000);
   }
 
-  console.log("Browser Copilot Agent activated with all commands registered");
+  console.log("Copilot Browser activated with all commands registered");
 }
 
 // Connect to relay server
@@ -383,7 +383,7 @@ async function connectToRelay(overrideUrl) {
         );
 
         vscode.window.showInformationMessage(
-          "Browser Copilot Agent: Connected to relay server"
+          "Copilot Browser: Connected to relay server"
         );
         resolve();
       });
@@ -422,7 +422,7 @@ async function connectToRelay(overrideUrl) {
           if (ws) ws.close();
           reject(new Error("Connection timeout"));
           vscode.window.showErrorMessage(
-            "Browser Copilot Agent: Connection timeout. Is the relay server running?"
+            "Copilot Browser: Connection timeout. Is the relay server running?"
           );
         }
       }, 10000);
@@ -430,7 +430,7 @@ async function connectToRelay(overrideUrl) {
       outputChannel.appendLine(`Connection error: ${error.message}`);
       reject(error);
       vscode.window.showErrorMessage(
-        `Browser Copilot Agent: ${error.message}`
+        `Copilot Browser: ${error.message}`
       );
     }
   });
@@ -509,7 +509,7 @@ function handleEvent(message) {
 function sendCommand(command, params) {
   if (!isConnected || !ws) {
     vscode.window.showWarningMessage(
-      "Browser Copilot Agent: Not connected. Use 'Browser Agent: Connect' first."
+      "Copilot Browser: Not connected. Use 'Browser Agent: Connect' first."
     );
     return Promise.reject(new Error("Not connected"));
   }
@@ -556,7 +556,7 @@ function disconnect() {
     relayServerProcess = null;
   }
 
-  vscode.window.showInformationMessage("Browser Copilot Agent: Disconnected");
+  vscode.window.showInformationMessage("Copilot Browser: Disconnected");
 }
 
 // Launch browser with relay server
@@ -564,7 +564,7 @@ async function launchBrowser() {
   console.log("Browser Copilot: launchBrowser command triggered");
   outputChannel.show(true);
   outputChannel.appendLine("------------------------------------------------");
-  outputChannel.appendLine("Browser Copilot Agent: Launching isolated browser...");
+  outputChannel.appendLine("Copilot Browser: Launching isolated browser...");
   vscode.window.setStatusBarMessage("Browser Copilot: Launching...", 3000);
 
   try {
@@ -605,7 +605,7 @@ async function launchBrowser() {
     if (!relayPath) {
       const msg = "Could not find relay-server/index.js. Ensure the extension is installed correctly.";
       outputChannel.appendLine(`❌ ERROR: ${msg}`);
-      vscode.window.showErrorMessage(`Browser Copilot Agent: ${msg}`);
+      vscode.window.showErrorMessage(`Copilot Browser: ${msg}`);
       return;
     }
 
@@ -632,7 +632,7 @@ async function launchBrowser() {
       } catch (error) {
         const msg = `Failed to install dependencies: ${error.message}`;
         outputChannel.appendLine(`❌ ${msg}`);
-        vscode.window.showErrorMessage(`Browser Copilot Agent: ${msg}`);
+        vscode.window.showErrorMessage(`Copilot Browser: ${msg}`);
         return;
       }
     }
@@ -679,14 +679,14 @@ async function launchBrowser() {
     relayServerProcess.on("error", (err) => {
       const msg = `Process error: ${err.message}`;
       outputChannel.appendLine(`❌ ${msg}`);
-      vscode.window.showErrorMessage(`Browser Copilot Agent: Relay Process Error: ${err.message}`);
+      vscode.window.showErrorMessage(`Copilot Browser: Relay Process Error: ${err.message}`);
     });
 
     relayServerProcess.on("close", (code) => {
       outputChannel.appendLine(`Relay server exited with code ${code}`);
       relayServerProcess = null;
       if (code !== 0 && code !== null) {
-        vscode.window.showErrorMessage(`Browser Copilot Agent: Relay server exited unexpectedly with code ${code}`);
+        vscode.window.showErrorMessage(`Copilot Browser: Relay server exited unexpectedly with code ${code}`);
       }
     });
 
@@ -698,14 +698,14 @@ async function launchBrowser() {
     await connectToRelay(`ws://localhost:${port}`);
 
     vscode.window.showInformationMessage(
-      "Browser Copilot Agent: Browser launched and connected!"
+      "Copilot Browser: Browser launched and connected!"
     );
   } catch (error) {
     console.error("Launch fatal error:", error);
     outputChannel.appendLine(`❌ Fatal Launch Error: ${error.message}`);
     outputChannel.appendLine(error.stack);
     vscode.window.showErrorMessage(
-      `Browser Copilot Agent: Fatal Error: ${error.message}`
+      `Copilot Browser: Fatal Error: ${error.message}`
     );
   }
 }
@@ -714,7 +714,7 @@ async function launchBrowser() {
 function updateStatusBar(connected) {
   if (connected) {
     statusBarItem.text = "$(globe) Browser Agent: Connected";
-    statusBarItem.tooltip = "Browser Copilot Agent - Connected to relay server";
+    statusBarItem.tooltip = "Copilot Browser - Connected to relay server";
     statusBarItem.backgroundColor = undefined;
     statusBarItem.command = "browserAgent.disconnect";
   } else {

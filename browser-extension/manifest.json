@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Browser Copilot Agent",
-  "short_name": "BrowserCopilot",
+  "name": "Copilot Browser",
+  "short_name": "Copilot Browser",
   "version": "2.0.0",
   "description": "Connect your browser to VS Code & AI Copilot for automated browser control, testing, and intelligent web automation",
   "permissions": [

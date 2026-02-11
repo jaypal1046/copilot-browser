@@ -1,4 +1,4 @@
-// Background Service Worker for Browser Copilot Agent
+// Background Service Worker for Copilot Browser
 // Handles WebSocket connection to relay server and command execution
 
 let ws = null;
@@ -99,13 +99,13 @@ function initializeAndConnect() {
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("Browser Copilot Agent installed");
+  console.log("Copilot Browser installed");
   initializeAndConnect();
 });
 
 // Connect on startup
 chrome.runtime.onStartup.addListener(() => {
-  console.log("Browser Copilot Agent started");
+  console.log("Copilot Browser started");
   initializeAndConnect();
 });
 

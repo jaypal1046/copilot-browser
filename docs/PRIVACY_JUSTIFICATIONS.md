@@ -50,5 +50,5 @@ Used to retrieve cookies for the current domain only when explicitly requested b
 ## Privacy Policy URL
 Since you are hosting this on GitHub, you can use a GitHub Gist or a file in your repo.
 I have created a `PRIVACY_POLICY.md` for you.
-**URL**: `https://github.com/jaypal1046/copilot-browser/blob/master/PRIVACY_POLICY.md`
+**URL**: `https://github.com/jaypal1046/Copilot Browser/blob/master/PRIVACY_POLICY.md`
 (Make sure to push the code first so this link works!)

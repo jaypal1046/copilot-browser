@@ -16,16 +16,16 @@ class BrowserAgent {
     if (this._api) return this._api;
 
     const ext = vscode.extensions.getExtension(
-      "browser-copilot-agent.browser-copilot-agent"
+      "jaypal1046.copilot-browser-vscode"
     );
     if (!ext) {
       throw new Error(
-        "Browser Copilot Agent extension not found. Install it first."
+        "Copilot Browser extension not found. Install it first."
       );
     }
     if (!ext.isActive) {
       throw new Error(
-        "Browser Copilot Agent not active. Run 'Browser Agent: Connect' first."
+        "Copilot Browser not active. Run 'Browser Agent: Connect' first."
       );
     }
 
@@ -39,7 +39,7 @@ class BrowserAgent {
   _log(message) {
     if (!this.outputChannel) {
       this.outputChannel = vscode.window.createOutputChannel(
-        "Browser Agent - Copilot"
+        "Copilot Browser - Copilot"
       );
     }
     this.outputChannel.appendLine(

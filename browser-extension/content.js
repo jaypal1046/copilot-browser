@@ -1,7 +1,7 @@
-// Content Script for Browser Copilot Agent
+// Content Script for Copilot Browser
 // Runs in the context of web pages to execute commands
 
-console.log("Browser Copilot Agent content script loaded");
+console.log("Copilot Browser content script loaded");
 
 // Intercept console logs
 const originalConsole = {

@@ -1,4 +1,4 @@
-# Contributing to Browser Copilot Integration
+# Contributing to Copilot Browser
 
 Thank you for your interest in contributing! 🎉
 
@@ -70,8 +70,8 @@ chore: maintenance tasks
 ```
 browser-copilot-integration/
 ├── relay-server/          # WebSocket relay server
-├── vscode-extension/      # VS Code extension
-├── browser-extension/     # Chrome/Edge extension
+├── vscode-extension/      # VS Code extension (Copilot Browser)
+├── browser-extension/     # Chrome/Edge extension (Copilot Browser)
 ├── agent-scripts/         # Automation agents
 └── docs/                  # Documentation
 ```

@@ -1,4 +1,4 @@
-# 🤖 Browser-Copilot Integration
+# 🤖 Copilot Browser Integration
 
 A powerful system that enables **GitHub Copilot** to control your browser automatically, similar to Google's Antigravity browser agent. This creates a bidirectional communication channel between VS Code, GitHub Copilot, and your browser for automated testing, debugging, and web automation.
 

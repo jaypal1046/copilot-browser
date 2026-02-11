@@ -1,10 +1,10 @@
-// Test Script for Browser Copilot Integration
+// Test Script for Copilot Browser
 // Run this to verify the system works end-to-end
 
 const { getBrowserAgent } = require("./copilot-helper");
 
 async function runTests() {
-  console.log("🧪 Starting Browser Copilot Integration Tests...\n");
+  console.log("🧪 Starting Copilot Browser Integration Tests...\n");
 
   const browser = getBrowserAgent();
 

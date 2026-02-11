@@ -1,4 +1,4 @@
-// Relay Server for Browser Copilot Agent - Enhanced v2.0
+// Relay Server for Copilot Browser / Copilot Browser-vscode - Enhanced v2.0
 // Routes commands between VS Code extension and browser extension
 
 const WebSocket = require("ws");
@@ -117,7 +117,7 @@ function serveDashboard(req, res) {
     res.end(fs.readFileSync(dashboardPath));
   } else {
     res.writeHead(200, { "Content-Type": "text/html" });
-    res.end("<h1>Browser Copilot Agent - Relay Server</h1><p>Dashboard not found.</p>");
+    res.end("<h1>Copilot Browser / Copilot Browser-vscode - Relay Server</h1><p>Dashboard not found.</p>");
   }
 }
 
@@ -565,7 +565,7 @@ process.on("SIGTERM", shutdown);
 server.listen(CONFIG.port, CONFIG.host, () => {
   console.log(`
 ╔══════════════════════════════════════════════╗
-║   Browser Copilot Agent — Relay Server v2.0  ║
+║   Copilot Browser / Copilot Browser-vscode — Relay Server v2.0  ║
 ╠══════════════════════════════════════════════╣
 ║  WebSocket: ws://${CONFIG.host}:${CONFIG.port}                 ║
 ║  Dashboard: http://localhost:${CONFIG.port}              ║

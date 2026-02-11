@@ -1,4 +1,4 @@
-// Popup script for Browser Copilot Agent - Enhanced v2.0
+// Popup script for Copilot Browser - Enhanced v2.0
 
 document.addEventListener("DOMContentLoaded", async () => {
   // DOM elements

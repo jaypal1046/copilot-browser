@@ -25,7 +25,7 @@
     "clean": "rm -rf agent-data/*.json screenshots/*.png logs/*.log",
     "setup": "npm install && cd relay-server && npm install && cd ../vscode-extension && npm install && cd ..",
     "package:vscode": "cd vscode-extension && npx -y @vscode/vsce package --out ../dist",
-    "package:chrome": "node -e \"const fs=require('fs'); if(!fs.existsSync('dist')) fs.mkdirSync('dist');\" && powershell -Command \"Compress-Archive -Path 'browser-extension\\*' -DestinationPath 'dist\\browser-copilot-chrome.zip' -Force\"",
+    "package:chrome": "node -e \"const fs=require('fs'); if(!fs.existsSync('dist')) fs.mkdirSync('dist');\" && powershell -Command \"Compress-Archive -Path 'browser-extension\\*' -DestinationPath 'dist\\Copilot Browser.zip' -Force\"",
     "package:all": "node scripts/package-all.js",
     "precommit": "npm run lint && npm test",
     "build": "npm run clean && npm run lint",

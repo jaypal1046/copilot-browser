@@ -1,6 +1,6 @@
 {
-  "name": "browser-copilot-agent",
-  "displayName": "Browser Copilot Agent",
+  "name": "copilot-browser-vscode",
+  "displayName": "Copilot Browser",
   "description": "Connect your browser to VS Code & AI Copilot for automated browser control, testing, and intelligent web automation",
   "version": "2.1.4",
   "publisher": "jaypal1046",
@@ -196,7 +196,7 @@
       }
     ],
     "configuration": {
-      "title": "Browser Copilot Agent",
+      "title": "Copilot Browser",
       "properties": {
         "browserAgent.relayServerUrl": {
           "type": "string",

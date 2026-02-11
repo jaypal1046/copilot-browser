@@ -2,7 +2,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-console.log('📦 Building Browser Copilot Integration Suite...');
+console.log('📦 Building Copilot Browser Integration Suite...');
 
 // Paths
 const rootDir = path.resolve(__dirname, '..');
@@ -84,7 +84,7 @@ try {
     console.log('\n----------------------------------------');
     console.log('🔨 Packaging Chrome Extension...');
 
-    const outputZip = path.join(distDir, 'browser-copilot-chrome.zip');
+    const outputZip = path.join(distDir, 'Copilot Browser.zip');
 
     console.log(`Zipping ${chromeDir} to ${outputZip}...`);
 

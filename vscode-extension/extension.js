@@ -5,8 +5,9 @@ const vscode = require("vscode");
 const WebSocket = require("ws");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
-const { spawn } = require("child_process");
+const { spawn, execSync } = require("child_process");
 const net = require("net"); // Required for port checking
+const fs = require("fs");
 const { BrowserAgentViewProvider } = require("./agent-view");
 
 let ws = null;
@@ -596,7 +597,6 @@ async function launchBrowser() {
       ];
 
       outputChannel.appendLine(`Searching for relay server in ${possiblePaths.length} fallback locations...`);
-      const fs = require("fs");
       for (const p of possiblePaths) {
         if (fs.existsSync(p)) {
           relayPath = p;
@@ -618,7 +618,6 @@ async function launchBrowser() {
 
     // Check node version
     try {
-      const { execSync } = require("child_process");
       const nodeVer = execSync("node -v").toString().trim();
       outputChannel.appendLine(`System Node Version: ${nodeVer}`);
     } catch (e) {
@@ -630,7 +629,6 @@ async function launchBrowser() {
     if (!fs.existsSync(nodeModulesPath)) {
       outputChannel.appendLine("Installing relay server dependencies (npm install)...");
       try {
-        const { execSync } = require("child_process");
         execSync("npm install", { cwd: relayCwd, stdio: "pipe" });
         outputChannel.appendLine("Dependencies installed successfully.");
       } catch (error) {

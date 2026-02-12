@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.7] - 2026-02-12
+
+### Fixed
+- **Port Conflict (EADDRINUSE)**: Fixed issue where relay server ignored dynamic port overrides and defaulted to 8080.
+- **Process Management**: Improved extension stability by ensuring old relay processes are killed before starting new ones.
+- **Robust Port Detection**: Updated port scanner to explicitly use `127.0.0.1` to avoid IPv6/IPv4 binding inconsistencies.
+
 ## [2.1.6] - 2026-02-12
 
 ### Fixed

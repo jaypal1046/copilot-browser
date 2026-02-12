@@ -160,7 +160,7 @@ function connectToRelay() {
           userAgent: navigator.userAgent,
           platform: navigator.platform,
           timestamp: Date.now(),
-          version: "2.0.0",
+          version: "2.1.7",
           capabilities: [
             "navigate", "click", "type", "scroll", "hover", "submit",
             "get_console", "get_dom", "get_element", "get_screenshot",

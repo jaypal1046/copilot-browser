@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Copilot Browser",
   "short_name": "Copilot Browser",
-  "version": "2.0.0",
+  "version": "2.1.7",
   "description": "Connect your browser to VS Code & AI Copilot for automated browser control, testing, and intelligent web automation",
   "permissions": [
     "activeTab",

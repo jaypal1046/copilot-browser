@@ -44,7 +44,7 @@ A powerful system that enables **GitHub Copilot** to control your browser automa
 1. Install from the [Chrome Web Store](https://chrome.google.com/webstore/detail/copilot-browser/placeholder).
 
 **Option B: Manual Install (GitHub)**
-1. Download [Copilot.Browser.zip](https://github.com/jaypal1046/copilot-browser/releases/download/2.1.6/Copilot.Browser.zip).
+1. Download [Copilot.Browser.zip](https://github.com/jaypal1046/copilot-browser/releases/download/2.1.7/Copilot.Browser.zip).
 2. Extract the file to a folder.
 3. Open Chrome/Edge and navigate to `chrome://extensions/`.
 4. Enable "Developer mode" (top-right toggle).
@@ -55,7 +55,7 @@ A powerful system that enables **GitHub Copilot** to control your browser automa
 1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jaypal-browser-copilot.copilot-browser-vscode).
 
 **Option B: Manual Install (VSIX)**
-1. Download [copilot-browser-vscode.vsix](https://github.com/jaypal1046/copilot-browser/releases/download/2.1.6/copilot-browser-vscode.vsix).
+1. Download [copilot-browser-vscode.vsix](https://github.com/jaypal1046/copilot-browser/releases/download/2.1.7/copilot-browser-vscode.vsix).
 2. In VS Code, press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac) → "Extensions: Install from VSIX..."
 3. Select the `.vsix` file.
 

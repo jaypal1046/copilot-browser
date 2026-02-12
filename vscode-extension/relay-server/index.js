@@ -36,7 +36,9 @@ const configPath = path.join(__dirname, "config.json");
 if (fs.existsSync(configPath)) {
   try {
     const fileConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    // Priority: Command line args > config.json > Env > Default
     Object.assign(CONFIG, fileConfig);
+    if (argsPort) CONFIG.port = parseInt(argsPort);
   } catch (e) {
     console.warn("Warning: Could not parse config.json:", e.message);
   }

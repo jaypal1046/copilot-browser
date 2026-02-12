@@ -1,0 +1,11 @@
+{
+    "name": "copilot-browser-chrome",
+    "version": "2.1.7",
+    "description": "Chrome Extension for Copilot Browser",
+    "scripts": {
+        "build": "node build.js"
+    },
+    "devDependencies": {
+        "esbuild": "^0.20.1"
+    }
+}

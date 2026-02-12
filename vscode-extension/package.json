@@ -2,7 +2,7 @@
   "name": "copilot-browser-vscode",
   "displayName": "Copilot Browser",
   "description": "Connect your browser to VS Code & AI Copilot for automated browser control, testing, and intelligent web automation",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "publisher": "jaypal-browser-copilot",
   "license": "MIT",
   "repository": {

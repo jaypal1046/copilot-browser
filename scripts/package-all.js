@@ -41,13 +41,20 @@ try {
     console.log(`Packed relay-server to: ${tgzPath}`);
 
     // 2. Install tgz in vscode-extension
+    // We move tgz to vscode-extension root to match user's manual dependency fix
+    const tgzFileName = tgzFiles[0];
+    const tgzDestPath = path.join(vscodeDir, tgzFileName);
+    console.log(`Moving ${tgzFileName} to extension root...`);
+    fs.renameSync(tgzPath, tgzDestPath);
+    const tgzPathFinal = tgzDestPath;
+
     // We backup package.json to restore later (keep source clean)
     const pkgJsonPath = path.join(vscodeDir, 'package.json');
     const pkgJsonBackup = fs.readFileSync(pkgJsonPath);
 
     try {
         console.log('Installing relay-server tarball...');
-        execSync(`npm install "${tgzPath}"`, { cwd: vscodeDir, stdio: 'inherit' });
+        execSync(`npm install "${tgzFileName}"`, { cwd: vscodeDir, stdio: 'inherit' });
 
         // 3. Clean stale VSIX files
         const oldFiles = fs.readdirSync(vscodeDir);
@@ -75,7 +82,7 @@ try {
         console.log('Restoring package.json...');
         fs.writeFileSync(pkgJsonPath, pkgJsonBackup);
         // Also delete the tgz file
-        if (fs.existsSync(tgzPath)) fs.unlinkSync(tgzPath);
+        if (fs.existsSync(tgzPathFinal)) fs.unlinkSync(tgzPathFinal);
         // And remove node_modules/relay-server? No need, next npm install will fix it.
         // Actually, restore package-lock.json? 
         try { execSync('git checkout package-lock.json', { cwd: vscodeDir, stdio: 'ignore' }); } catch (e) { }
@@ -95,12 +102,21 @@ try {
     console.log('\n----------------------------------------');
     console.log('🔨 Packaging Chrome Extension...');
 
+    const chromeBuildDir = path.join(chromeDir, 'dist');
     const outputZip = path.join(distDir, 'Copilot.Browser.zip');
 
-    console.log(`Zipping ${chromeDir} to ${outputZip}...`);
+    // Check if browser-extension has a build script
+    if (fs.existsSync(path.join(chromeDir, 'package.json'))) {
+        console.log('Building browser extension...');
+        execSync('npm install', { cwd: chromeDir, stdio: 'inherit' });
+        execSync('npm run build', { cwd: chromeDir, stdio: 'inherit' });
+    }
+
+    const sourcePath = fs.existsSync(chromeBuildDir) ? chromeBuildDir : chromeDir;
+    console.log(`Zipping ${sourcePath} to ${outputZip}...`);
 
     // Use PowerShell Compress-Archive
-    const cmd = `powershell -Command "Compress-Archive -Path '${chromeDir}\\*' -DestinationPath '${outputZip}' -Force"`;
+    const cmd = `powershell -Command "Compress-Archive -Path '${sourcePath}\\*' -DestinationPath '${outputZip}' -Force"`;
     execSync(cmd, { stdio: 'inherit' });
 
     if (fs.existsSync(outputZip)) {

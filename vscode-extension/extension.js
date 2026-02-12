@@ -587,8 +587,18 @@ async function launchBrowser() {
     }
 
     // ---------------------------------------------------------
-    // 2. Fallback File Search
+    // 3. Process Cleanup
     // ---------------------------------------------------------
+    if (relayServerProcess) {
+      outputChannel.appendLine("Killing existing relay server process...");
+      try {
+        relayServerProcess.kill();
+        relayServerProcess = null;
+      } catch (e) {
+        outputChannel.appendLine(`Warning: Failed to kill old process: ${e.message}`);
+      }
+    }
+
     if (!relayPath) {
       const possiblePaths = [
         path.join(__dirname, "relay-server", "index.js"),           // Local source
@@ -764,7 +774,8 @@ module.exports = {
 function findFreePort(startPort) {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
-    server.listen(startPort, () => {
+    // Use 127.0.0.1 explicitly to avoid IPv6 issues
+    server.listen(startPort, "127.0.0.1", () => {
       server.close(() => {
         resolve(startPort);
       });

@@ -37,9 +37,13 @@ function activate(context) {
   updateStatusBar(false);
   statusBarItem.show();
 
+  // Get version dynamically
+  const extensionVersion = vscode.extensions.getExtension("jaypal-browser-copilot.copilot-browser-vscode")?.packageJSON.version || "2.1.5";
+
   // =============== Register Sidebar View ===============
   agentViewProvider = new BrowserAgentViewProvider(
     context.extensionUri,
+    extensionVersion,
     () => ({ isConnected })
   );
   context.subscriptions.push(
@@ -376,7 +380,7 @@ async function connectToRelay(overrideUrl) {
             metadata: {
               editor: "vscode",
               version: vscode.version,
-              extensionVersion: "2.0.0",
+              extensionVersion: extensionVersion,
               timestamp: Date.now(),
             },
           })

@@ -40,15 +40,23 @@ A powerful system that enables **GitHub Copilot** to control your browser automa
 ### Installation
 
 #### 1. Install the Browser Extension
-1. Open Chrome/Edge
-2. Navigate to `chrome://extensions/`
-3. Enable "Developer mode" (top-right toggle)
-4. Click "Load unpacked"
-5. Select the `browser-extension` folder
+**Option A: Chrome Web Store (Recommended)**
+1. Install from the [Chrome Web Store](https://chrome.google.com/webstore/detail/copilot-browser/placeholder).
+
+**Option B: Manual Install (GitHub)**
+1. Download [Copilot.Browser.zip](https://github.com/jaypal1046/copilot-browser/releases/download/2.1.5/Copilot.Browser.zip).
+2. Extract the file to a folder.
+3. Open Chrome/Edge and navigate to `chrome://extensions/`.
+4. Enable "Developer mode" (top-right toggle).
+5. Click "Load unpacked" and select the extracted folder.
 
 #### 2. Install the VS Code Extension
-1. Download the `.vsix` file from the releases page (or build it yourself).
-2. In VS Code, press `Cmd+Shift+P` → "Extensions: Install from VSIX..."
+**Option A: VS Code Marketplace (Recommended)**
+1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jaypal-browser-copilot.copilot-browser-vscode).
+
+**Option B: Manual Install (VSIX)**
+1. Download [copilot-browser-vscode.vsix](https://github.com/jaypal1046/copilot-browser/releases/download/2.1.5/copilot-browser-vscode.vsix).
+2. In VS Code, press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac) → "Extensions: Install from VSIX..."
 3. Select the `.vsix` file.
 
 That's it! NO separate server installation is required.
@@ -56,38 +64,30 @@ That's it! NO separate server installation is required.
 ### Publishing to Chrome Web Store
 
 1.  **Zip the Extension**:
-    Compress the `browser-extension` folder into a `.zip` file.
-    *(I have already created `browser-extension.zip` for you in the root folder)*
+    Use the build script to generate a production zip: `node scripts/package-all.js`.
+    *(This creates `dist/Copilot.Browser.zip` for you)*
 
 2.  **Upload**:
     -   Go to [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/dev/dashboard)
     -   Click "New Item"
-    -   Upload `browser-extension.zip`
+    -   Upload `dist/Copilot.Browser.zip`
     -   Fill in store listing details and publish.
 
 ### Packaging for Release
 
-To package this extension for the VS Code Marketplace:
+I have provided a unified build script to package everything:
 
-1.  **Install vsce** (VS Code Extensions CLI):
+1.  **Run Build Script**:
     ```bash
-    npm install -g @vscode/vsce
+    node scripts/package-all.js
     ```
+    This generates version-independent files in the `dist/` folder:
+    - `copilot-browser-vscode.vsix`
+    - `Copilot.Browser.zip`
 
-2.  **Install Dependencies**:
-    ```bash
-    cd vscode-extension
-    npm install
-    ```
-
-3.  **Package**:
-    ```bash
-    vsce package
-    ```
-    This generates a `.vsix` file (e.g., `browser-copilot-agent-1.0.0.vsix`).
-
-4.  **Publish**:
-    Upload the `.vsix` file to the [VS Code Marketplace](https://marketplace.visualstudio.com/).
+2.  **Publish**:
+    - Upload `copilot-browser-vscode.vsix` to the [VS Code Marketplace](https://marketplace.visualstudio.com/).
+    - Upload files to [GitHub Releases](https://github.com/jaypal1046/copilot-browser/releases).
 
 Or manually:
 
@@ -370,8 +370,8 @@ Inspired by:
 
 ## 📞 Support
 
-- Issues: [GitHub Issues](https://github.com/your-repo/issues)
-- Discussions: [GitHub Discussions](https://github.com/your-repo/discussions)
+- Issues: [GitHub Issues](https://github.com/jaypal1046/copilot-browser/issues)
+- Discussions: [GitHub Discussions](https://github.com/jaypal1046/copilot-browser/discussions)
 
 ---
 

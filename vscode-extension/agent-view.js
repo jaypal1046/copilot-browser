@@ -6,8 +6,9 @@ const vscode = require("vscode");
 class BrowserAgentViewProvider {
 
 
-  constructor(extensionUri, getState) {
+  constructor(extensionUri, extensionVersion, getState) {
     this._extensionUri = extensionUri;
+    this._extensionVersion = extensionVersion;
     this._getState = getState; // () => { isConnected, logs }
     this._view = undefined;
   }
@@ -57,6 +58,11 @@ class BrowserAgentViewProvider {
           break;
         case "listTabs":
           vscode.commands.executeCommand("browserAgent.listTabs");
+          break;
+        case "openUrl":
+          if (msg.url) {
+            vscode.env.openExternal(vscode.Uri.parse(msg.url));
+          }
           break;
       }
     });
@@ -242,6 +248,24 @@ class BrowserAgentViewProvider {
       gap: 5px;
     }
     .conn-row .btn-secondary { flex: 1; }
+
+    /* ── Info Box ── */
+    .info-box {
+      background: rgba(0, 122, 204, 0.1);
+      border-left: 3px solid #007acc;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .info-box h4 {
+      margin-bottom: 4px;
+      color: #007acc;
+      font-size: 12px;
+    }
+    .info-box ol {
+      margin-left: 20px;
+    }
   </style>
 </head>
 <body>
@@ -266,6 +290,39 @@ class BrowserAgentViewProvider {
       ⏹ Disconnect
     </button>
   </div>
+
+  <!-- Downloads & Setup -->
+  <details style="margin-top: 10px; cursor: pointer;">
+    <summary class="section-title" style="margin: 0; display: list-item; outline: none;">
+      Downloads & Install
+    </summary>
+    <div style="margin-top: 10px;">
+      <div class="action-grid" style="margin-bottom: 12px; grid-template-columns: 1fr 1fr;">
+        <button class="action-btn" onclick="openUrl('https://marketplace.visualstudio.com/items?itemName=jaypal-browser-copilot.copilot-browser-vscode')" style="background: rgba(0, 122, 204, 0.15); border-color: #007acc55;">
+          <span class="icon">🏪</span> Marketplace
+        </button>
+        <button class="action-btn" onclick="openUrl('https://github.com/jaypal1046/copilot-browser/releases/download/${this._extensionVersion}/copilot-browser-vscode.vsix')">
+          <span class="icon">📦</span> VSIX (${this._extensionVersion})
+        </button>
+        <button class="action-btn" onclick="openUrl('https://chrome.google.com/webstore/detail/copilot-browser/placeholder')" style="background: rgba(40, 167, 69, 0.15); border-color: #28a74555;">
+          <span class="icon">🎨</span> Web Store
+        </button>
+        <button class="action-btn" onclick="openUrl('https://github.com/jaypal1046/copilot-browser/releases/download/${this._extensionVersion}/Copilot.Browser.zip')">
+          <span class="icon">💾</span> ZIP (${this._extensionVersion})
+        </button>
+      </div>
+      
+      <div class="info-box">
+        <h4>Manual Installation Guide</h4>
+        <ol>
+          <li>Download and extract the ZIP file.</li>
+          <li>Open Chrome and go to <code>chrome://extensions</code></li>
+          <li>Enable <b>Developer mode</b> (top right).</li>
+          <li>Click <b>Load unpacked</b> and select the extracted folder.</li>
+        </ol>
+      </div>
+    </div>
+  </details>
 
   <!-- Quick Actions -->
   <div class="section-title">Quick Actions</div>
@@ -307,6 +364,11 @@ class BrowserAgentViewProvider {
 
     function send(command) {
       vscode.postMessage({ command });
+    }
+
+    function openUrl(url) {
+      // We can use a command to open URL in external browser
+      vscode.postMessage({ command: 'openUrl', url: url });
     }
 
     window.addEventListener("message", (event) => {

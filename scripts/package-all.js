@@ -59,6 +59,17 @@ try {
         console.log('Packaging extension (vsce)...');
         execSync(`npx -y @vscode/vsce package --out "${distDir}"`, { cwd: vscodeDir, stdio: 'inherit' });
 
+        // Rename VSIX to a version-independent name
+        const vsixFiles = fs.readdirSync(distDir).filter(f => f.endsWith('.vsix'));
+        if (vsixFiles.length > 0) {
+            const originalVsix = vsixFiles[0];
+            const targetVsix = 'copilot-browser-vscode.vsix';
+            if (originalVsix !== targetVsix) {
+                console.log(`Renaming ${originalVsix} to ${targetVsix}...`);
+                fs.renameSync(path.join(distDir, originalVsix), path.join(distDir, targetVsix));
+            }
+        }
+
     } finally {
         // 5. Cleanup / Restore package.json
         console.log('Restoring package.json...');
@@ -84,7 +95,7 @@ try {
     console.log('\n----------------------------------------');
     console.log('🔨 Packaging Chrome Extension...');
 
-    const outputZip = path.join(distDir, 'Copilot Browser.zip');
+    const outputZip = path.join(distDir, 'Copilot.Browser.zip');
 
     console.log(`Zipping ${chromeDir} to ${outputZip}...`);
 
